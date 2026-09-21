@@ -41,6 +41,9 @@ export default function Header() {
           <button aria-label="Search" className="p-2" onClick={() => setSearchOpen(true)}>
             <SearchIcon />
           </button>
+          <Link to={user ? '/account/wishlist' : '/login'} aria-label="Wishlist" className="p-2 hidden sm:block">
+            <HeartIcon />
+          </Link>
           <Link to={user ? '/account' : '/login'} aria-label="Account" className="p-2 hidden sm:block">
             <UserIcon />
           </Link>
@@ -86,6 +89,11 @@ export default function Header() {
                     {link.label}
                   </NavLink>
                 ))}
+                {user && (
+                  <NavLink to="/account/wishlist" onClick={() => setMenuOpen(false)}>
+                    Wishlist
+                  </NavLink>
+                )}
                 <NavLink to={user ? '/account' : '/login'} onClick={() => setMenuOpen(false)}>
                   {user ? 'My Account' : 'Login / Signup'}
                 </NavLink>
@@ -117,6 +125,13 @@ function SearchIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <circle cx="11" cy="11" r="7" />
       <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
+    </svg>
+  );
+}
+function HeartIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 21s-7.5-4.87-10-9.5C.5 7.5 3 4 6.5 4c2 0 3.5 1 5.5 3.5C14 5 15.5 4 17.5 4 21 4 23.5 7.5 22 11.5 19.5 16.13 12 21 12 21z" strokeLinejoin="round" />
     </svg>
   );
 }

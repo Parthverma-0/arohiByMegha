@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useProduct, useProductReviews } from '../api/products.js';
@@ -15,6 +15,7 @@ import ProductCard from '../components/ui/ProductCard.jsx';
 
 export default function ProductDetail() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const { data, isLoading } = useProduct(slug);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -35,6 +36,15 @@ export default function ProductDetail() {
     try {
       await addToCart.mutateAsync({ productId: product._id, quantity });
       toast.success('Added to bag');
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
+  }
+
+  async function handleBuyNow() {
+    try {
+      await addToCart.mutateAsync({ productId: product._id, quantity });
+      navigate('/cart');
     } catch (err) {
       toast.error(apiErrorMessage(err));
     }
@@ -113,9 +123,9 @@ export default function ProductDetail() {
             <button className="btn-primary flex-1" disabled={outOfStock || addToCart.isPending} onClick={handleAddToCart}>
               {outOfStock ? 'Out of Stock' : 'Add to Cart'}
             </button>
-            <Link to="/cart" className="btn-outline flex-1 text-center" onClick={handleAddToCart}>
+            <button className="btn-outline flex-1 text-center" disabled={outOfStock || addToCart.isPending} onClick={handleBuyNow}>
               Buy Now
-            </Link>
+            </button>
           </div>
 
           <div className="mt-4 flex gap-5 text-sm">

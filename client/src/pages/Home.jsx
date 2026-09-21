@@ -56,6 +56,15 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="border-y border-charcoal/10 bg-blush/40">
+        <div className="max-w-8xl mx-auto px-4 md:px-8 py-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center text-sm">
+          <TrustBadge icon={<ExchangeIcon />} label="7-Day Easy Exchange" />
+          <TrustBadge icon={<CodIcon />} label="Cash on Delivery" />
+          <TrustBadge icon={<LockIcon />} label="Secure Checkout" />
+          <TrustBadge icon={<ShippingIcon />} label="Free Shipping" />
+        </div>
+      </section>
+
       <section className="max-w-8xl mx-auto px-4 md:px-8 py-16 md:py-24">
         <h2 className="section-heading text-center">Shop by Category</h2>
         <div className="mt-10 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
@@ -115,5 +124,48 @@ export default function Home() {
 
       <Newsletter />
     </>
+  );
+}
+
+function TrustBadge({ icon, label }) {
+  return (
+    <div className="flex flex-col items-center gap-2 py-4">
+      <span className="text-gold-dark">{icon}</span>
+      <span className="text-charcoal/80">{label}</span>
+    </div>
+  );
+}
+
+function ExchangeIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M4 7h13l-3-3M20 17H7l3 3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function CodIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
+  );
+}
+function LockIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V7a4 4 0 018 0v4" strokeLinecap="round" />
+    </svg>
+  );
+}
+function ShippingIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M3 7h11v9H3z" strokeLinejoin="round" />
+      <path d="M14 10h4l3 3v3h-7z" strokeLinejoin="round" />
+      <circle cx="7" cy="18" r="1.5" />
+      <circle cx="17" cy="18" r="1.5" />
+    </svg>
   );
 }

@@ -67,7 +67,9 @@ export const addItem = catchAsync(async (req, res) => {
 
   const cart = await getOrCreateCart(req, res);
   const existing = cart.items.find((i) => String(i.product) === productId);
-  if (existing) existing.quantity = Math.min(20, existing.quantity + quantity);
+  const desiredQuantity = Math.min(20, (existing?.quantity || 0) + quantity);
+  if (product.stock < desiredQuantity) throw new ApiError(400, `Only ${product.stock} left in stock`);
+  if (existing) existing.quantity = desiredQuantity;
   else cart.items.push({ product: productId, quantity });
   await cart.save();
   res.json({ success: true, ...(await hydrate(cart)) });
@@ -78,6 +80,9 @@ export const updateItem = catchAsync(async (req, res) => {
   const cart = await getOrCreateCart(req, res);
   const item = cart.items.find((i) => String(i.product) === req.params.productId);
   if (!item) throw new ApiError(404, 'Item not in cart');
+  const product = await Product.findById(req.params.productId);
+  if (!product || !product.isActive) throw new ApiError(404, 'Product not found');
+  if (product.stock < quantity) throw new ApiError(400, `Only ${product.stock} left in stock`);
   item.quantity = quantity;
   await cart.save();
   res.json({ success: true, ...(await hydrate(cart)) });

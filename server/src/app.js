@@ -39,7 +39,7 @@ export function createApp() {
           mediaSrc: ["'self'", 'https://res.cloudinary.com'],
           scriptSrc: ["'self'", 'https://checkout.razorpay.com'],
           frameSrc: ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
-          connectSrc: ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com'],
+          connectSrc: ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com', 'https://api.cloudinary.com'],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         },

@@ -79,6 +79,7 @@ export default function Checkout() {
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
         toast.error('Could not load payment gateway. Please try Cash on Delivery.');
+        setPlacing(false);
         return;
       }
 
@@ -104,16 +105,19 @@ export default function Checkout() {
             navigate(`/order-confirmation/${order._id}`, { state: { order } });
           } catch (err) {
             toast.error(apiErrorMessage(err, 'Payment verification failed'));
+          } finally {
+            setPlacing(false);
           }
         },
         modal: { ondismiss: () => setPlacing(false) },
       });
       rzp.open();
+      // Left in the "placing" state on purpose here — the Razorpay modal now owns
+      // resetting it, via either the handler above or modal.ondismiss.
       return;
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Could not place order'));
-    } finally {
-      if (paymentMethod === 'cod') setPlacing(false);
+      setPlacing(false);
     }
   }
 
