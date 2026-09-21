@@ -23,7 +23,6 @@ import {
   adminUpdateOrderStatus,
   updateStatusSchema,
   adminExportOrdersExcel,
-  adminRebuildOrdersExcel,
 } from '../controllers/orderController.js';
 import {
   adminListCoupons,
@@ -59,7 +58,6 @@ router.delete('/categories/:id', audit('category.delete', 'Category'), deleteCat
 
 router.get('/orders', adminListOrders);
 router.get('/orders/export/excel', adminExportOrdersExcel);
-router.post('/orders/export/excel/rebuild', requireAdminAuth('owner', 'manager'), adminRebuildOrdersExcel);
 router.get('/orders/:id', adminGetOrder);
 router.put(
   '/orders/:id/status',

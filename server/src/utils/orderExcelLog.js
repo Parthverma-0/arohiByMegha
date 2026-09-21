@@ -1,14 +1,5 @@
-import path from 'path';
-import fs from 'fs';
 import ExcelJS from 'exceljs';
 import Order from '../models/Order.js';
-
-// Free hosting tiers (Render/Railway free plans) can lose local disk on redeploy/restart,
-// so this file is a convenience export, not the source of truth — Mongo is. Use
-// rebuildOrdersWorkbook() (wired to an admin endpoint) to regenerate it from the DB
-// at any time if it goes missing.
-const DATA_DIR = path.join(process.cwd(), 'data');
-const WORKBOOK_PATH = path.join(DATA_DIR, 'orders.xlsx');
 
 const COLUMNS = [
   { header: 'Order Number', key: 'orderNumber', width: 20 },
@@ -48,33 +39,12 @@ function orderToRow(order) {
   };
 }
 
-async function loadOrCreateWorkbook() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  const workbook = new ExcelJS.Workbook();
-  if (fs.existsSync(WORKBOOK_PATH)) {
-    await workbook.xlsx.readFile(WORKBOOK_PATH);
-  }
-  let sheet = workbook.getWorksheet('Orders');
-  if (!sheet) {
-    sheet = workbook.addWorksheet('Orders');
-    sheet.columns = COLUMNS;
-    sheet.getRow(1).font = { bold: true };
-  }
-  return { workbook, sheet };
-}
-
-// Appends one row for a freshly placed order. Called from the checkout flow —
-// wrapped in try/catch there so a disk/write problem never fails an order.
-export async function logOrderToExcel(order) {
-  const { workbook, sheet } = await loadOrCreateWorkbook();
-  sheet.addRow(orderToRow(order));
-  await workbook.xlsx.writeFile(WORKBOOK_PATH);
-}
-
-// Rebuilds the whole workbook from MongoDB (the source of truth) — used to recover
-// the export after the file is missing (e.g. a fresh deploy) or to reconcile status changes.
-export async function rebuildOrdersWorkbook() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// Builds the orders workbook fresh from MongoDB (the source of truth) on every
+// call — no local file involved, so this behaves identically on a persistent
+// host (Render/Railway) and a serverless one (Vercel), where the filesystem
+// is read-only outside /tmp and not guaranteed to survive between invocations
+// anyway. Mongo already has every order; this is just a live export of it.
+export async function buildOrdersWorkbook() {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Orders');
   sheet.columns = COLUMNS;
@@ -83,12 +53,5 @@ export async function rebuildOrdersWorkbook() {
   const orders = await Order.find({}).sort({ createdAt: 1 });
   for (const order of orders) sheet.addRow(orderToRow(order));
 
-  await workbook.xlsx.writeFile(WORKBOOK_PATH);
-  return WORKBOOK_PATH;
+  return workbook;
 }
-
-export function ordersWorkbookExists() {
-  return fs.existsSync(WORKBOOK_PATH);
-}
-
-export { WORKBOOK_PATH };

@@ -41,24 +41,20 @@ export function useUpdateOrderStatus() {
   });
 }
 
-async function downloadOrdersWorkbook(method, url) {
-  const res = await api.request({ method, url, responseType: 'blob' });
-  const blobUrl = window.URL.createObjectURL(res.data);
-  const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = 'arohi-orders.xlsx';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  window.URL.revokeObjectURL(blobUrl);
-}
-
 export function useExportOrdersExcel() {
-  return useMutation({ mutationFn: () => downloadOrdersWorkbook('get', '/admin/orders/export/excel') });
-}
-
-export function useRebuildOrdersExcel() {
-  return useMutation({ mutationFn: () => downloadOrdersWorkbook('post', '/admin/orders/export/excel/rebuild') });
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.get('/admin/orders/export/excel', { responseType: 'blob' });
+      const blobUrl = window.URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = 'arohi-orders.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    },
+  });
 }
 
 export function useAdminCustomers() {

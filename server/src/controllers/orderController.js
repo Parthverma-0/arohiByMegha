@@ -8,7 +8,7 @@ import { catchAsync } from '../utils/catchAsync.js';
 import { ApiError } from '../utils/ApiError.js';
 import { razorpay, isRazorpayConfigured, verifyPaymentSignature } from '../utils/razorpay.js';
 import { applyCoupon } from '../utils/pricing.js';
-import { logOrderToExcel, rebuildOrdersWorkbook, ordersWorkbookExists, WORKBOOK_PATH } from '../utils/orderExcelLog.js';
+import { buildOrdersWorkbook } from '../utils/orderExcelLog.js';
 
 const FLAT_SHIPPING_FEE = 0; // free shipping for now; make this pincode/weight based later if needed
 
@@ -89,14 +89,6 @@ async function finalizeOrder({ req, lineItems, subtotal, shippingAddress, coupon
 
   cart.items = [];
   await cart.save();
-
-  try {
-    await logOrderToExcel(order);
-  } catch (err) {
-    // Excel export is a convenience, not the source of truth (Mongo is) — never fail
-    // checkout over it. Admins can regenerate the sheet from the DB at any time.
-    console.error('[orderExcelLog] failed to log order to Excel:', err);
-  }
 
   return order;
 }
@@ -222,16 +214,12 @@ export const adminUpdateOrderStatus = catchAsync(async (req, res) => {
   res.json({ success: true, order });
 });
 
-// Downloads the running orders.xlsx (rebuilding it from Mongo first if it's missing —
-// e.g. after a redeploy on a host with ephemeral disk).
+// Streams a fresh orders.xlsx built from Mongo — no local file involved, so
+// this works the same on a persistent host and a serverless one (Vercel).
 export const adminExportOrdersExcel = catchAsync(async (req, res) => {
-  if (!ordersWorkbookExists()) await rebuildOrdersWorkbook();
-  res.download(WORKBOOK_PATH, 'arohi-orders.xlsx');
-});
-
-// Regenerates orders.xlsx from Mongo (source of truth) and downloads it — use when the
-// sheet looks out of sync with order statuses, or after restoring from a fresh deploy.
-export const adminRebuildOrdersExcel = catchAsync(async (req, res) => {
-  await rebuildOrdersWorkbook();
-  res.download(WORKBOOK_PATH, 'arohi-orders.xlsx');
+  const workbook = await buildOrdersWorkbook();
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="arohi-orders.xlsx"');
+  await workbook.xlsx.write(res);
+  res.end();
 });

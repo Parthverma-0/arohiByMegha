@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAdminOrders, useExportOrdersExcel, useRebuildOrdersExcel } from '../api/misc.js';
+import { useAdminOrders, useExportOrdersExcel } from '../api/misc.js';
 
 function formatINR(n) {
   return `₹${Number(n).toLocaleString('en-IN')}`;
@@ -12,7 +12,6 @@ export default function Orders() {
   const [status, setStatus] = useState('');
   const { data, isLoading } = useAdminOrders({ status: status || undefined, limit: 100 });
   const exportExcel = useExportOrdersExcel();
-  const rebuildExcel = useRebuildOrdersExcel();
 
   return (
     <div>
@@ -26,14 +25,6 @@ export default function Orders() {
             title="Download the running orders spreadsheet"
           >
             {exportExcel.isPending ? 'Preparing…' : 'Download Excel'}
-          </button>
-          <button
-            className="text-sm underline text-charcoal/60 hover:text-charcoal"
-            disabled={rebuildExcel.isPending}
-            onClick={() => rebuildExcel.mutate()}
-            title="Regenerate the spreadsheet from the database (use if it looks out of sync)"
-          >
-            {rebuildExcel.isPending ? 'Rebuilding…' : 'Rebuild from DB'}
           </button>
           <select className="input-field !w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             {statuses.map((s) => <option key={s} value={s}>{s ? s.replace('_', ' ') : 'All statuses'}</option>)}

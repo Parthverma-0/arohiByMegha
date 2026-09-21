@@ -8,9 +8,7 @@ node_modules/
 # Build output
 dist/
 build/
-
-# Generated at runtime
-server/data/
+/public/
 
 # Old WordPress migration artifacts (superseded by the MERN rebuild, kept locally for reference only)
 deploy/

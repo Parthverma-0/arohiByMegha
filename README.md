@@ -49,6 +49,18 @@ npm start         # runs the API, which now also serves both built apps
 
 In production, everything is served by the one Node process on `PORT` (default 5000): the storefront at `/`, the admin dashboard at `/admin`, and the API under `/api`. Set `NODE_ENV=production` for this static-serving behavior to activate. This means you only need **one** hosting service (e.g. Render/Railway free tier) — not a separate frontend and backend host.
 
+## 5. Deploying to Vercel
+
+Vercel doesn't run a long-lived Node process the way Render/Railway do — it runs the API as serverless functions and has a read-only filesystem outside `/tmp`. This repo is set up for that too, via the same one-deploy idea:
+
+- `api/index.js` wraps the Express app (`server/src/app.js`) as a single serverless function handling everything under `/api/*`, with a cached MongoDB connection so warm invocations don't reconnect every request.
+- `vercel.json` routes `/api/*` to that function, `/admin/*` to the built admin SPA, and everything else to the built client SPA.
+- `npm run vercel-build` (auto-detected by Vercel) builds both React apps and merges their `dist/` output into a single `public/` folder, which is what Vercel serves as static files.
+
+To deploy: import this GitHub repo in the Vercel dashboard, leave the framework preset on "Other" (it'll pick up `vercel.json`), and add every variable from `server/.env` (Mongo/Cloudinary/Razorpay/auth secrets/seed admin) under **Project Settings → Environment Variables** — Vercel injects these directly into `process.env`, there's no `.env` file involved in production. No other config needed.
+
+One behavioral difference from Render/Railway: the Excel order export always regenerates fresh from MongoDB on every download (`buildOrdersWorkbook()` in `server/src/utils/orderExcelLog.js`) rather than maintaining a live-appended file on disk — this is actually the safer design everywhere, not just a Vercel workaround, since Mongo is the real source of truth either way.
+
 ## What's deferred
 
 Per the phased approach agreed for this project, the following are intentionally not built yet because they depend on third-party vendor accounts you haven't set up:
