@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Env files (real secrets — never commit)
+.env
+.env.local
+
+# Build output
+dist/
+build/
+
+# Generated at runtime
+server/data/
+
+# Old WordPress migration artifacts (superseded by the MERN rebuild, kept locally for reference only)
+deploy/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Claude Code local state
+.claude/
