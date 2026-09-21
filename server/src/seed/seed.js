@@ -57,7 +57,9 @@ async function seed() {
   console.log('[seed] Upserting categories...');
   const categoryBySlug = {};
   for (const c of categoriesData) {
-    const doc = await Category.findOneAndUpdate({ slug: c.slug }, c, { upsert: true, new: true, setDefaultsOnInsert: true });
+    const categoryImageUrl = imagePathFor(`category-${c.slug}`);
+    const image = categoryImageUrl ? { url: categoryImageUrl, publicId: `local:category-${c.slug}` } : undefined;
+    const doc = await Category.findOneAndUpdate({ slug: c.slug }, { ...c, image }, { upsert: true, new: true, setDefaultsOnInsert: true });
     categoryBySlug[c.slug] = doc;
   }
 
