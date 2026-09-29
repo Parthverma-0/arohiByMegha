@@ -18,6 +18,8 @@ export async function connectDB() {
       .then(() => console.log('[db] Connected to MongoDB'))
       .catch((err) => {
         connectPromise = null; // allow a retry on the next call instead of staying stuck on a failed attempt
+        // On Vercel, the usual cause is Atlas Network Access not allowing 0.0.0.0/0
+        // (Vercel functions have no fixed outbound IP).
         console.error('[db] Failed to connect to MongoDB:', err.message);
       });
   }

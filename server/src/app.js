@@ -49,15 +49,26 @@ export function createApp() {
   );
 
   // In dev, client/admin run on their own Vite ports and need CORS + credentialed cookies.
-  // In prod they're served by this same app (same origin), so this is effectively a no-op allowlist.
+  // In prod they're served from the same host as the API. Browsers still send an
+  // Origin header on same-origin POSTs (e.g. admin login), so same-origin requests
+  // must be allowed explicitly rather than relying on CLIENT_ORIGIN/ADMIN_ORIGIN
+  // matching whatever domain the site is deployed under.
   const allowedOrigins = [process.env.CLIENT_ORIGIN, process.env.ADMIN_ORIGIN].filter(Boolean);
   app.use(
-    cors({
-      origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-        callback(new Error('Not allowed by CORS'));
-      },
-      credentials: true,
+    cors((req, callback) => {
+      const origin = req.header('Origin');
+      let sameOrigin = false;
+      try {
+        sameOrigin = Boolean(origin) && new URL(origin).host === req.get('host');
+      } catch {
+        // malformed Origin header — treat as cross-origin
+      }
+      if (!origin || sameOrigin || allowedOrigins.includes(origin)) {
+        return callback(null, { origin: true, credentials: true });
+      }
+      const err = new Error('Not allowed by CORS');
+      err.statusCode = 403;
+      callback(err);
     })
   );
 
