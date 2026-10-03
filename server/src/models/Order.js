@@ -57,7 +57,7 @@ const orderSchema = new mongoose.Schema(
     razorpay: {
       orderId: String,
       paymentId: String,
-      signature: String,
+      method: String, // upi, card, netbanking, wallet…
     },
     currentStatus: {
       type: String,
@@ -65,6 +65,13 @@ const orderSchema = new mongoose.Schema(
       default: 'placed',
     },
     statusHistory: { type: [statusEventSchema], default: () => [{ status: 'placed' }] },
+    invoice: {
+      number: { type: String, unique: true, sparse: true }, // e.g. ABM-K7Q2M-0007
+      issuedAt: Date,
+      emailedAt: Date,
+      emailedTo: String,
+      emailError: String, // last send failure, cleared on success
+    },
   },
   { timestamps: true }
 );

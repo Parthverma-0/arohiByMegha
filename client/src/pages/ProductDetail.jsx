@@ -76,7 +76,7 @@ export default function ProductDetail() {
       <div className="grid md:grid-cols-2 gap-8 md:gap-14">
         <div>
           <div className="aspect-square rounded-lg overflow-hidden bg-blush">
-            <LazyImage src={images[activeImage]?.url} alt={images[activeImage]?.alt || product.name} eager className="w-full h-full object-cover" />
+            <LazyImage width={1200} src={images[activeImage]?.url} alt={images[activeImage]?.alt || product.name} eager className="w-full h-full object-cover" />
           </div>
           {images.length > 1 && (
             <div className="mt-3 flex gap-3">
@@ -86,7 +86,7 @@ export default function ProductDetail() {
                   onClick={() => setActiveImage(i)}
                   className={`w-16 h-16 rounded overflow-hidden border ${i === activeImage ? 'border-charcoal' : 'border-transparent'}`}
                 >
-                  <LazyImage src={img.url} alt="" className="w-full h-full object-cover" />
+                  <LazyImage width={200} src={img.url} alt="" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>

@@ -23,6 +23,8 @@ import {
   adminUpdateOrderStatus,
   updateStatusSchema,
   adminExportOrdersExcel,
+  adminDownloadInvoice,
+  adminEmailInvoice,
 } from '../controllers/orderController.js';
 import {
   adminListCoupons,
@@ -59,6 +61,8 @@ router.delete('/categories/:id', audit('category.delete', 'Category'), deleteCat
 router.get('/orders', adminListOrders);
 router.get('/orders/export/excel', adminExportOrdersExcel);
 router.get('/orders/:id', adminGetOrder);
+router.get('/orders/:id/invoice', adminDownloadInvoice);
+router.post('/orders/:id/invoice/email', audit('invoice.email', 'Order'), adminEmailInvoice);
 router.put(
   '/orders/:id/status',
   requireAdminAuth('owner', 'manager'),

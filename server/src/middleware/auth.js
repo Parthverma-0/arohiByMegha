@@ -31,7 +31,11 @@ export async function attachCustomerIfPresent(req, res, next) {
     const payload = verifyCustomerAccessToken(token);
     req.userId = payload.sub;
   } catch {
-    // ignore invalid/expired token for optional auth
+    // A token that was sent but no longer verifies (usually just expired) must
+    // not silently downgrade the request to a guest — that swaps a logged-in
+    // shopper onto their guest cart mid-session. A 401 makes the client refresh
+    // its access token and retry against the right identity.
+    return next(new ApiError(401, 'Session expired, please log in again'));
   }
   next();
 }

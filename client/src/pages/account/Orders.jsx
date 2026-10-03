@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { api, apiErrorMessage } from '../../api/client.js';
 import { useMyOrders } from '../../api/orders.js';
 import { formatINR } from '../../components/ui/PriceTag.jsx';
 
@@ -6,6 +8,22 @@ const statusLabels = {
   placed: 'Placed', confirmed: 'Confirmed', packed: 'Packed', shipped: 'Shipped',
   out_for_delivery: 'Out for Delivery', delivered: 'Delivered', cancelled: 'Cancelled', refunded: 'Refunded',
 };
+
+async function downloadInvoice(order) {
+  try {
+    const res = await api.get(`/orders/mine/${order._id}/invoice`, { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Invoice-${order.invoice?.number || order.orderNumber}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    toast.error(apiErrorMessage(err, 'Could not download the invoice'));
+  }
+}
 
 export default function Orders() {
   const { data: orders = [], isLoading } = useMyOrders();
@@ -25,7 +43,14 @@ export default function Orders() {
             <span className="text-sm bg-blush px-3 py-1 rounded-full">{statusLabels[order.currentStatus]}</span>
           </div>
           <p className="text-sm text-charcoal/70 mt-2">{order.items.length} item(s) · {formatINR(order.total)}</p>
-          <Link to={`/order-confirmation/${order._id}`} className="text-sm underline underline-offset-4 mt-2 inline-block">View details</Link>
+          <div className="flex gap-5 mt-2">
+            <Link to={`/order-confirmation/${order._id}`} className="text-sm underline underline-offset-4">View details</Link>
+            {order.paymentStatus === 'paid' && (
+              <button type="button" onClick={() => downloadInvoice(order)} className="text-sm underline underline-offset-4">
+                Download invoice
+              </button>
+            )}
+          </div>
         </li>
       ))}
     </ul>

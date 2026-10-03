@@ -37,7 +37,7 @@ export default function Home() {
               preload="metadata"
             />
           ) : (
-            <LazyImage src={content?.hero?.url} alt="" eager className="w-full h-full object-cover" />
+            <LazyImage width={1920} src={content?.hero?.url} alt="" eager className="w-full h-full object-cover" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-charcoal/60 via-charcoal/10 to-transparent" />
         </div>
@@ -72,6 +72,7 @@ export default function Home() {
             <Link key={cat._id} to={`/shop?category=${cat.slug}`} className="group text-center">
               <div className="aspect-square rounded-full overflow-hidden bg-blush">
                 <LazyImage
+                  width={500}
                   src={cat.image?.url}
                   alt={cat.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -110,7 +111,7 @@ export default function Home() {
       <section className="bg-blush py-16 md:py-24">
         <div className="max-w-6xl mx-auto px-4 md:px-8 grid md:grid-cols-2 gap-10 items-center">
           <div className="aspect-[4/3] rounded-lg overflow-hidden">
-            <LazyImage src={content?.brandStory?.image?.url} alt="" className="w-full h-full object-cover" />
+            <LazyImage width={1200} src={content?.brandStory?.image?.url} alt="" className="w-full h-full object-cover" />
           </div>
           <div>
             <h2 className="section-heading">{content?.brandStory?.heading || 'Our Story'}</h2>

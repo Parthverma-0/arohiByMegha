@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAdminCategories, useAdminProducts, useCreateProduct, useUpdateProduct } from '../api/products.js';
@@ -19,14 +19,18 @@ export default function ProductForm() {
   const { data: existing } = useAdminProducts({ limit: 100 });
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
+  // Fill the form from the server only once — a background refetch of the
+  // product list must not wipe edits the admin is in the middle of making.
+  const loadedRef = useRef(false);
 
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
 
   useEffect(() => {
-    if (isEdit && existing?.products) {
+    if (isEdit && existing?.products && !loadedRef.current) {
       const product = existing.products.find((p) => p._id === id);
       if (product) {
+        loadedRef.current = true;
         setForm({
           name: product.name,
           description: product.description,
@@ -134,11 +138,16 @@ export default function ProductForm() {
           <input type="file" accept="video/*" onChange={handleVideoUpload} disabled={uploading} />
         </div>
 
-        <div className="flex gap-6 text-sm">
+        <div className="flex flex-wrap gap-6 text-sm">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> <strong>Show on website</strong></label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={form.isBestseller} onChange={(e) => setForm({ ...form, isBestseller: e.target.checked })} /> Bestseller</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={form.isNewArrival} onChange={(e) => setForm({ ...form, isNewArrival: e.target.checked })} /> New Arrival</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} /> Active</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.isNewArrival} onChange={(e) => setForm({ ...form, isNewArrival: e.target.checked })} /> New Arrival (home page)</label>
         </div>
+        {!form.isActive && (
+          <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+            This product is hidden — customers won't see it anywhere on the website until "Show on website" is ticked.
+          </p>
+        )}
 
         <div className="flex gap-3 pt-2">
           <button type="submit" className="btn-primary" disabled={uploading || createProduct.isPending || updateProduct.isPending}>

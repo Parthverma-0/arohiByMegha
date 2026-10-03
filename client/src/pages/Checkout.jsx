@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useCart } from '../api/cart.js';
-import { usePlaceCodOrder, useCreateRazorpayOrder, useVerifyRazorpayOrder, usePreviewCoupon } from '../api/orders.js';
+import { usePlaceCodOrder, useInitiateRazorpayPayment, useVerifyRazorpayPayment, usePreviewCoupon } from '../api/orders.js';
 import { apiErrorMessage } from '../api/client.js';
 import { formatINR } from '../components/ui/PriceTag.jsx';
+import { useAuthStore } from '../store/authStore.js';
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
@@ -21,17 +22,23 @@ function loadRazorpayScript() {
 const emptyAddress = { fullName: '', phone: '', email: '', line1: '', line2: '', city: '', state: '', pincode: '' };
 
 export default function Checkout() {
-  const { data: cart, isLoading } = useCart();
+  const { data: cart, isPending: isLoading } = useCart();
   const [address, setAddress] = useState(emptyAddress);
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [couponCode, setCouponCode] = useState('');
   const [coupon, setCoupon] = useState(null);
   const [placing, setPlacing] = useState(false);
   const navigate = useNavigate();
+  const user = useAuthStore((st) => st.user);
+
+  // The invoice is emailed to this address, so pre-fill it for logged-in shoppers.
+  useEffect(() => {
+    if (user?.email) setAddress((prev) => (prev.email ? prev : { ...prev, email: user.email }));
+  }, [user?.email]);
 
   const placeCod = usePlaceCodOrder();
-  const createRazorpayOrder = useCreateRazorpayOrder();
-  const verifyRazorpay = useVerifyRazorpayOrder();
+  const initiateRazorpay = useInitiateRazorpayPayment();
+  const verifyRazorpay = useVerifyRazorpayPayment();
   const previewCoupon = usePreviewCoupon();
 
   if (isLoading) return <div className="max-w-4xl mx-auto px-4 py-20">Loading...</div>;
@@ -67,6 +74,9 @@ export default function Checkout() {
     for (const field of ['fullName', 'phone', 'line1', 'city', 'state', 'pincode']) {
       if (!address[field]?.trim()) return toast.error('Please fill in all required address fields');
     }
+    if (!/^\S+@\S+\.\S+$/.test(address.email.trim())) {
+      return toast.error('Please enter a valid email — your invoice will be sent there');
+    }
 
     setPlacing(true);
     try {
@@ -83,7 +93,10 @@ export default function Checkout() {
         return;
       }
 
-      const { razorpayOrderId, amount, keyId } = await createRazorpayOrder.mutateAsync({ couponCode: coupon?.code });
+      const { razorpayOrderId, amount, keyId } = await initiateRazorpay.mutateAsync({
+        shippingAddress: address,
+        couponCode: coupon?.code,
+      });
 
       const rzp = new window.Razorpay({
         key: keyId,
@@ -93,16 +106,16 @@ export default function Checkout() {
         order_id: razorpayOrderId,
         prefill: { name: address.fullName, contact: address.phone, email: address.email },
         theme: { color: '#A9812F' },
+        // The server re-checks the payment with Razorpay before creating the order.
         handler: async (response) => {
           try {
-            const order = await verifyRazorpay.mutateAsync({
-              shippingAddress: address,
-              couponCode: coupon?.code,
+            const data = await verifyRazorpay.mutateAsync({
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
             });
-            navigate(`/order-confirmation/${order._id}`, { state: { order } });
+            if (data.order) navigate(`/order-confirmation/${data.order._id}`, { state: { order: data.order } });
+            else toast(data.message, { duration: 8000 });
           } catch (err) {
             toast.error(apiErrorMessage(err, 'Payment verification failed'));
           } finally {
@@ -132,7 +145,7 @@ export default function Checkout() {
           <div className="grid sm:grid-cols-2 gap-4">
             <input className="input-field" placeholder="Full Name*" value={address.fullName} onChange={(e) => updateField('fullName', e.target.value)} />
             <input className="input-field" placeholder="Phone*" value={address.phone} onChange={(e) => updateField('phone', e.target.value)} />
-            <input className="input-field sm:col-span-2" placeholder="Email (for order updates)" value={address.email} onChange={(e) => updateField('email', e.target.value)} />
+            <input className="input-field sm:col-span-2" type="email" placeholder="Email* (your invoice is sent here)" value={address.email} onChange={(e) => updateField('email', e.target.value)} />
             <input className="input-field sm:col-span-2" placeholder="Address Line 1*" value={address.line1} onChange={(e) => updateField('line1', e.target.value)} />
             <input className="input-field sm:col-span-2" placeholder="Address Line 2" value={address.line2} onChange={(e) => updateField('line2', e.target.value)} />
             <input className="input-field" placeholder="City*" value={address.city} onChange={(e) => updateField('city', e.target.value)} />
@@ -148,7 +161,7 @@ export default function Checkout() {
             </label>
             <label className="flex items-center gap-3 border border-charcoal/15 rounded-lg p-4 cursor-pointer">
               <input type="radio" checked={paymentMethod === 'razorpay'} onChange={() => setPaymentMethod('razorpay')} />
-              UPI / Card / Net Banking (Razorpay)
+              UPI / Card / Net Banking / Wallet
             </label>
           </div>
         </div>

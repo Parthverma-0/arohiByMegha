@@ -5,7 +5,7 @@ export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
     queryFn: async () => (await api.get('/categories')).data.categories,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -46,6 +46,6 @@ export function useHomepageContent() {
   return useQuery({
     queryKey: ['homepage-content'],
     queryFn: async () => (await api.get('/site-content/homepage')).data.content,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
   });
 }

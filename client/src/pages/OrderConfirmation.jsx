@@ -49,6 +49,15 @@ export default function OrderConfirmation() {
         <p className="text-sm text-charcoal/60 mt-3">
           Paying via {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'} · Shipping to {order.shippingAddress.city}, {order.shippingAddress.state}
         </p>
+        {order.shippingAddress.email && (
+          <p className="text-sm text-charcoal/60 mt-1">
+            {order.invoice?.emailedAt
+              ? `Your invoice has been emailed to ${order.invoice.emailedTo}.`
+              : order.paymentMethod === 'cod'
+                ? `Your invoice will be emailed to ${order.shippingAddress.email} once payment is received on delivery.`
+                : `Your invoice will be emailed to ${order.shippingAddress.email}.`}
+          </p>
+        )}
       </div>
 
       <Link to="/shop" className="btn-primary mt-8">Continue Shopping</Link>

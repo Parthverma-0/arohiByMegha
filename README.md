@@ -18,7 +18,7 @@ Then edit `server/.env`:
 1. **MongoDB Atlas** (required to run anything) — create a free M0 cluster at https://cloud.mongodb.com, add a database user, allow network access from your IP (or `0.0.0.0/0` for simplicity during development), and paste the connection string into `MONGODB_URI`.
 2. **Auth secrets** — generate four random strings (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`, run it 4 times) and paste them into `CUSTOMER_ACCESS_SECRET`, `CUSTOMER_REFRESH_SECRET`, `ADMIN_ACCESS_SECRET`, `ADMIN_REFRESH_SECRET`.
 3. **Cloudinary** (optional to start, required for the admin dashboard's image/video uploads) — free account at https://cloudinary.com, copy Cloud Name / API Key / API Secret from the dashboard.
-4. **Razorpay** (optional to start, required for online payment — COD works without it) — https://razorpay.com, use test-mode keys until you're ready to go live.
+4. **Razorpay** (optional to start, required for online payment — COD works without it) — https://razorpay.com, use test-mode keys until you're ready to go live. For reliability also add a webhook (Settings → Webhooks) pointing at `https://<your-domain>/api/orders/razorpay/webhook` with events `payment.captured` and `order.paid`, and put its secret in `RAZORPAY_WEBHOOK_SECRET` — it creates the order even if a customer closes the tab right after paying.
 5. `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` — the very first admin account, created by the seed script below.
 
 ## 2. Seed the database
@@ -57,7 +57,7 @@ Vercel doesn't run a long-lived Node process the way Render/Railway do — it ru
 - `vercel.json` routes `/api/*` to that function, `/admin/*` to the built admin SPA, and everything else to the built client SPA.
 - `npm run vercel-build` (auto-detected by Vercel) builds both React apps and merges their `dist/` output into a single `public/` folder, which is what Vercel serves as static files.
 
-To deploy: import this GitHub repo in the Vercel dashboard, leave the framework preset on "Other" (it'll pick up `vercel.json`), and add every variable from `server/.env` (Mongo/Cloudinary/Razorpay/auth secrets/seed admin) under **Project Settings → Environment Variables** — Vercel injects these directly into `process.env`, there's no `.env` file involved in production. No other config needed.
+To deploy: import this GitHub repo in the Vercel dashboard, leave the framework preset on "Other" (it'll pick up `vercel.json`), and add every variable from `server/.env` (Mongo/Cloudinary/Razorpay/Gmail/auth secrets/seed admin) under **Project Settings → Environment Variables** — Vercel injects these directly into `process.env`, there's no `.env` file involved in production. No other config needed.
 
 One behavioral difference from Render/Railway: the Excel order export always regenerates fresh from MongoDB on every download (`buildOrdersWorkbook()` in `server/src/utils/orderExcelLog.js`) rather than maintaining a live-appended file on disk — this is actually the safer design everywhere, not just a Vercel workaround, since Mongo is the real source of truth either way.
 

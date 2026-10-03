@@ -14,6 +14,7 @@ import Coupons from './pages/Coupons.jsx';
 import Reviews from './pages/Reviews.jsx';
 import HomepageContent from './pages/HomepageContent.jsx';
 import AuditLog from './pages/AuditLog.jsx';
+import Invoices from './pages/Invoices.jsx';
 import { useAdminAuthStore } from './store/adminAuthStore.js';
 import { hydrateAdminSession } from './api/auth.js';
 
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="categories" element={<Categories />} />
           <Route path="orders" element={<Orders />} />
           <Route path="orders/:id" element={<OrderDetail />} />
+          <Route path="invoices" element={<Invoices />} />
           <Route path="customers" element={<Customers />} />
           <Route path="coupons" element={<Coupons />} />
           <Route path="reviews" element={<Reviews />} />

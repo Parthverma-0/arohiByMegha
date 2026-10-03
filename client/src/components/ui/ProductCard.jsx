@@ -33,6 +33,7 @@ export default function ProductCard({ product }) {
       <Link to={`/product/${product.slug}`} className="group block">
         <div className="relative aspect-square overflow-hidden rounded-lg bg-blush">
           <LazyImage
+            width={600}
             src={image?.url}
             alt={image?.alt || product.name}
             className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${outOfStock ? 'opacity-60 grayscale-[30%]' : ''}`}

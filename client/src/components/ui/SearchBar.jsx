@@ -50,7 +50,7 @@ export default function SearchBar({ onClose }) {
                   }}
                 >
                   <div className="w-12 h-12 bg-blush rounded overflow-hidden shrink-0">
-                    <LazyImage src={p.images?.[0]?.url} alt={p.name} className="w-full h-full object-cover" />
+                    <LazyImage width={160} src={p.images?.[0]?.url} alt={p.name} className="w-full h-full object-cover" />
                   </div>
                   <div>
                     <p className="text-sm">{p.name}</p>

@@ -41,6 +41,42 @@ export function useUpdateOrderStatus() {
   });
 }
 
+// Streams the invoice PDF through the authenticated API client, then hands
+// it to the browser as a normal file download.
+export function useDownloadInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => {
+      const res = await api.get(`/admin/orders/${id}/invoice`, { responseType: 'blob' });
+      const match = /filename="([^"]+)"/.exec(res.headers['content-disposition'] || '');
+      const blobUrl = window.URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = match?.[1] || 'invoice.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    },
+    // Downloading numbers an order that had no invoice number yet.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+      qc.invalidateQueries({ queryKey: ['admin-order'] });
+    },
+  });
+}
+
+export function useEmailInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id) => (await api.post(`/admin/orders/${id}/invoice/email`)).data,
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+      qc.invalidateQueries({ queryKey: ['admin-order'] });
+    },
+  });
+}
+
 export function useExportOrdersExcel() {
   return useMutation({
     mutationFn: async () => {

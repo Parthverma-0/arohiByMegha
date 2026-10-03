@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAdminOrder, useUpdateOrderStatus } from '../api/misc.js';
+import InvoiceActions from '../components/InvoiceActions.jsx';
 import { apiErrorMessage } from '../api/client.js';
 
 function formatINR(n) {
@@ -37,6 +38,7 @@ export default function OrderDetail() {
         <div className="card">
           <h2 className="font-medium mb-2">Shipping Address</h2>
           <p className="text-sm">{order.shippingAddress.fullName} · {order.shippingAddress.phone}</p>
+          {order.shippingAddress.email && <p className="text-sm text-charcoal/70">{order.shippingAddress.email}</p>}
           <p className="text-sm text-charcoal/70">
             {order.shippingAddress.line1}, {order.shippingAddress.line2 ? `${order.shippingAddress.line2}, ` : ''}
             {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.pincode}
@@ -47,6 +49,11 @@ export default function OrderDetail() {
           <p className="text-sm">{order.paymentMethod.toUpperCase()} · {order.paymentStatus}</p>
           <p className="text-sm text-charcoal/70">Total: {formatINR(order.total)} (Subtotal {formatINR(order.subtotal)}, Discount {formatINR(order.discount)})</p>
         </div>
+      </div>
+
+      <div className="card mb-6">
+        <h2 className="font-medium mb-3">Invoice</h2>
+        <InvoiceActions order={order} showStatus />
       </div>
 
       <div className="card mb-6">

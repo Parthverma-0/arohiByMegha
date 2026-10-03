@@ -9,16 +9,18 @@ export function usePlaceCodOrder() {
   });
 }
 
-export function useCreateRazorpayOrder() {
+export function useInitiateRazorpayPayment() {
   return useMutation({
-    mutationFn: async (payload) => (await api.post('/orders/razorpay/create', payload)).data,
+    mutationFn: async (payload) => (await api.post('/orders/razorpay/initiate', payload)).data,
   });
 }
 
-export function useVerifyRazorpayOrder() {
+// Resolves with { order } once paid, or { pending: true, message } if the
+// payment hasn't been confirmed yet.
+export function useVerifyRazorpayPayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (payload) => (await api.post('/orders/razorpay/verify', payload)).data.order,
+    mutationFn: async (payload) => (await api.post('/orders/razorpay/verify', payload)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cart'] }),
   });
 }

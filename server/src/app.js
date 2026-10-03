@@ -72,7 +72,8 @@ export function createApp() {
     })
   );
 
-  app.use(express.json({ limit: '1mb' }));
+  // Keep the raw bytes too: the Razorpay webhook signature is computed over them.
+  app.use(express.json({ limit: '1mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
   app.use(cookieParser());
   app.use(mongoSanitize());
   app.use(globalLimiter);
