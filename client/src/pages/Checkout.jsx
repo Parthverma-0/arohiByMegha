@@ -24,10 +24,11 @@ const emptyAddress = { fullName: '', phone: '', email: '', line1: '', line2: '',
 export default function Checkout() {
   const { data: cart, isPending: isLoading } = useCart();
   const [address, setAddress] = useState(emptyAddress);
-  const [paymentMethod, setPaymentMethod] = useState('cod');
+  const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [couponCode, setCouponCode] = useState('');
   const [coupon, setCoupon] = useState(null);
   const [placing, setPlacing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const navigate = useNavigate();
   const user = useAuthStore((st) => st.user);
 
@@ -108,6 +109,7 @@ export default function Checkout() {
         theme: { color: '#A9812F' },
         // The server re-checks the payment with Razorpay before creating the order.
         handler: async (response) => {
+          setConfirming(true);
           try {
             const data = await verifyRazorpay.mutateAsync({
               razorpayOrderId: response.razorpay_order_id,
@@ -119,10 +121,16 @@ export default function Checkout() {
           } catch (err) {
             toast.error(apiErrorMessage(err, 'Payment verification failed'));
           } finally {
+            setConfirming(false);
             setPlacing(false);
           }
         },
         modal: { ondismiss: () => setPlacing(false) },
+      });
+      // Razorpay keeps its window open after a failed attempt so the shopper can
+      // retry; tell them why it failed rather than leaving them guessing.
+      rzp.on('payment.failed', (response) => {
+        toast.error(response?.error?.description || 'Payment failed. Please try again or use another method.', { duration: 8000 });
       });
       rzp.open();
       // Left in the "placing" state on purpose here — the Razorpay modal now owns
@@ -137,6 +145,13 @@ export default function Checkout() {
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-10 md:py-14">
       <Helmet><title>Checkout | Arohi by Megha</title></Helmet>
+      {confirming && (
+        <div className="fixed inset-0 z-50 bg-ivory/95 flex flex-col items-center justify-center text-center px-6">
+          <div className="w-10 h-10 border-2 border-gold-dark border-t-transparent rounded-full animate-spin" />
+          <p className="mt-5 font-display text-2xl">Confirming your payment…</p>
+          <p className="mt-2 text-sm text-charcoal/60">Please don't close or refresh this page.</p>
+        </div>
+      )}
       <h1 className="section-heading mb-8">Checkout</h1>
 
       <div className="grid md:grid-cols-[1fr_340px] gap-10">
@@ -156,12 +171,12 @@ export default function Checkout() {
           <h2 className="font-medium mt-8 mb-4">Payment Method</h2>
           <div className="space-y-3">
             <label className="flex items-center gap-3 border border-charcoal/15 rounded-lg p-4 cursor-pointer">
-              <input type="radio" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
-              Cash on Delivery
-            </label>
-            <label className="flex items-center gap-3 border border-charcoal/15 rounded-lg p-4 cursor-pointer">
               <input type="radio" checked={paymentMethod === 'razorpay'} onChange={() => setPaymentMethod('razorpay')} />
               UPI / Card / Net Banking / Wallet
+            </label>
+            <label className="flex items-center gap-3 border border-charcoal/15 rounded-lg p-4 cursor-pointer">
+              <input type="radio" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
+              Cash on Delivery
             </label>
           </div>
         </div>
@@ -176,7 +191,9 @@ export default function Checkout() {
           <div className="flex justify-between text-sm"><span>Shipping</span><span>Free</span></div>
           <div className="flex justify-between font-medium text-base border-t border-charcoal/15 pt-3"><span>Total</span><span>{formatINR(total)}</span></div>
           <button className="btn-primary w-full mt-2" onClick={placeOrder} disabled={placing}>
-            {placing ? 'Placing Order...' : 'Place Order'}
+            {placing
+              ? paymentMethod === 'cod' ? 'Placing Order...' : 'Opening payment...'
+              : paymentMethod === 'cod' ? 'Place Order (Cash on Delivery)' : `Pay ${formatINR(total)}`}
           </button>
         </div>
       </div>
