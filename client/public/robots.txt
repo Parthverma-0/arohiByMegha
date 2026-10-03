@@ -6,4 +6,4 @@ Disallow: /account
 Disallow: /order-confirmation/
 Disallow: /admin
 
-Sitemap: https://arohi-by-megha.vercel.app/sitemap.xml
+Sitemap: https://www.arohibymegha.in/sitemap.xml
