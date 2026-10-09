@@ -61,7 +61,7 @@ export default function Home() {
           <TrustBadge icon={<ExchangeIcon />} label="7-Day Easy Exchange" />
           <TrustBadge icon={<UpiIcon />} label="Pay by UPI" />
           <TrustBadge icon={<LockIcon />} label="Secure Checkout" />
-          <TrustBadge icon={<ShippingIcon />} label="Free Delivery over ₹500" />
+          <TrustBadge icon={<ShippingIcon />} label="Pan-India Delivery" />
         </div>
       </section>
 

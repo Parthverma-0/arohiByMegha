@@ -4,9 +4,9 @@ import { City, State } from 'country-state-city';
 // Galta Road, Jaipur 302003.
 const ORIGIN = { lat: 26.9191, lng: 75.8449 };
 
-const FREE_DELIVERY_FROM = 500; // order subtotal (₹) at which delivery is free
-const MIN_FEE = 90;             // ₹, below FREE_DELIVERY_FROM
-const PER_KM = 9;               // ₹ per km, charged when it comes to more than MIN_FEE
+// Every order pays ₹9/km, with a minimum of ₹90.
+const MIN_FEE = 90; // ₹
+const PER_KM = 9;   // ₹ per km, charged when it comes to more than MIN_FEE
 // Distances are measured as the crow flies; roads are typically ~25% longer.
 const ROAD_FACTOR = 1.25;
 
@@ -50,12 +50,11 @@ function locateCity({ countryCode, stateCode, city }) {
 // Returns { fee, distanceKm, note }. fee is null when it can't be worked out
 // automatically (outside India, or an address we couldn't locate) — the
 // order still goes through and the fee is agreed on WhatsApp.
-export async function quoteDelivery(subtotal, address = {}) {
+export async function quoteDelivery(address = {}) {
   const countryCode = address.countryCode || 'IN';
   if (countryCode !== 'IN') {
     return { fee: null, distanceKm: null, note: 'International delivery — charges will be shared on WhatsApp' };
   }
-  if (subtotal >= FREE_DELIVERY_FROM) return { fee: 0, distanceKm: null, note: `Free delivery on orders of ₹${FREE_DELIVERY_FROM}+` };
 
   const pincode = String(address.pincode || '').trim();
   const point = (/^\d{6}$/.test(pincode) && (await geocodePincode(pincode))) || (address.stateCode && address.city && locateCity({ countryCode, ...address }));
@@ -66,4 +65,4 @@ export async function quoteDelivery(subtotal, address = {}) {
   return { fee, distanceKm, note: `Approx. ${distanceKm} km from our Jaipur studio` };
 }
 
-export const DELIVERY_RULES = { FREE_DELIVERY_FROM, MIN_FEE, PER_KM };
+export const DELIVERY_RULES = { MIN_FEE, PER_KM };

@@ -70,7 +70,7 @@ async function priceCheckout(req, couponCode, shippingAddress) {
   const coupon = await applyCoupon(couponCode, subtotal);
   const discount = round2(coupon.discount);
   const afterDiscount = Math.max(0, subtotal - discount);
-  const quote = await quoteDelivery(afterDiscount, shippingAddress);
+  const quote = await quoteDelivery(shippingAddress);
   const shippingFee = quote.fee ?? 0;
   return {
     cartOwner: owner,

@@ -185,7 +185,7 @@ export default function Checkout() {
             <span>Total</span>
             <span>{formatINR(total)}{q?.delivery?.feePending ? ' + delivery' : ''}</span>
           </div>
-          <p className="text-xs text-charcoal/60">Free delivery on orders of ₹500 and above. Below that, ₹9 per km (minimum ₹90) from Jaipur.</p>
+          <p className="text-xs text-charcoal/60">Delivery is ₹9 per km from Jaipur, minimum ₹90.</p>
           <button className="btn-primary w-full mt-2" onClick={submit} disabled={placeOrder.isPending || quote.isFetching}>
             {placeOrder.isPending ? 'Placing order…' : 'Place Order on WhatsApp'}
           </button>
