@@ -14,6 +14,7 @@ const COLUMNS = [
   { header: 'Total', key: 'total', width: 12 },
   { header: 'Payment Method', key: 'paymentMethod', width: 16 },
   { header: 'Payment Status', key: 'paymentStatus', width: 16 },
+  { header: 'Payment Ref', key: 'paymentRef', width: 20 },
   { header: 'Order Status', key: 'currentStatus', width: 16 },
   { header: 'Shipping Address', key: 'address', width: 50 },
 ];
@@ -32,8 +33,9 @@ function orderToRow(order) {
     total: order.total,
     paymentMethod: order.paymentMethod,
     paymentStatus: order.paymentStatus,
+    paymentRef: order.manualPayment?.reference || order.razorpay?.paymentId || '',
     currentStatus: order.currentStatus,
-    address: [order.shippingAddress?.line1, order.shippingAddress?.line2, order.shippingAddress?.city, order.shippingAddress?.state, order.shippingAddress?.pincode]
+    address: [order.shippingAddress?.line1, order.shippingAddress?.line2, order.shippingAddress?.city, order.shippingAddress?.state, order.shippingAddress?.pincode, order.shippingAddress?.country]
       .filter(Boolean)
       .join(', '),
   };

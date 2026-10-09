@@ -41,6 +41,19 @@ export function useUpdateOrderStatus() {
   });
 }
 
+// Approve or reject a manual (UPI QR code) payment.
+export function useReviewPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, decision, reference, note }) => (await api.post(`/admin/orders/${id}/payment`, { decision, reference, note })).data.order,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-orders'] });
+      qc.invalidateQueries({ queryKey: ['admin-order'] });
+      qc.invalidateQueries({ queryKey: ['admin-dashboard-stats'] });
+    },
+  });
+}
+
 // Streams the invoice PDF through the authenticated API client, then hands
 // it to the browser as a normal file download.
 export function useDownloadInvoice() {

@@ -7,7 +7,8 @@ function formatINR(n) {
 }
 
 // Every paid order has an invoice. Online payments are invoiced and emailed
-// the moment they're paid; Cash on Delivery orders when marked Delivered.
+// the moment they're paid, UPI QR code orders when the payment is approved,
+// and (older) Cash on Delivery orders when marked Delivered.
 export default function Invoices() {
   const { data, isLoading } = useAdminOrders({ paymentStatus: 'paid', limit: 100 });
 

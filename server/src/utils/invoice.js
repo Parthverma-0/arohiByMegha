@@ -106,20 +106,24 @@ export function buildInvoicePdf(order) {
       a.line1,
       a.line2,
       [a.city, a.state].filter(Boolean).join(', ') + (a.pincode ? ` - ${a.pincode}` : ''),
+      a.country && a.country !== 'India' ? a.country : null,
       a.phone && `Phone: ${a.phone}`,
       a.email && `Email: ${a.email}`,
     ].filter(Boolean);
     addressLines.forEach((line) => doc.text(line, left, doc.y + 2, { width: 280 }));
     const billBottom = doc.y;
 
-    const paidLabel = order.paymentStatus === 'paid' ? 'Paid' : order.paymentStatus === 'refunded' ? 'Refunded' : 'Payment due on delivery';
+    const paidLabel =
+      order.paymentStatus === 'paid' ? 'Paid' : order.paymentStatus === 'refunded' ? 'Refunded' : order.paymentMethod === 'cod' ? 'Payment due on delivery' : 'Payment pending';
     doc.font('Helvetica-Bold').fontSize(9).fillColor(muted).text('PAYMENT', 345, y, { width: 200, align: 'right' });
     doc.font('Helvetica').fontSize(9.5).fillColor(ink);
     const modeNames = { upi: 'UPI', card: 'Card', netbanking: 'Net Banking', wallet: 'Wallet', emi: 'EMI', paylater: 'Pay Later' };
     const mode = order.razorpay?.method;
-    const method = order.paymentMethod === 'razorpay' ? `Online${mode ? ` (${modeNames[mode] || mode})` : ''}` : 'Cash on Delivery';
+    const method =
+      order.paymentMethod === 'razorpay' ? `Online${mode ? ` (${modeNames[mode] || mode})` : ''}` : order.paymentMethod === 'manual_upi' ? 'UPI (QR code)' : 'Cash on Delivery';
     doc.text(method, 345, y + 14, { width: 200, align: 'right' });
     doc.text(paidLabel, 345, doc.y + 2, { width: 200, align: 'right' });
+    if (order.manualPayment?.reference) doc.fillColor(muted).text(`UPI Ref: ${order.manualPayment.reference}`, 345, doc.y + 2, { width: 200, align: 'right' });
     if (order.razorpay?.paymentId) doc.fillColor(muted).text(`Payment ID: ${order.razorpay.paymentId}`, 345, doc.y + 2, { width: 200, align: 'right' });
 
     y = Math.max(billBottom, doc.y) + 22;

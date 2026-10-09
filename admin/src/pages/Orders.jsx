@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdminOrders, useExportOrdersExcel } from '../api/misc.js';
+import { isAwaitingPayment, paymentMethodLabel } from '../components/PaymentReview.jsx';
 
 function formatINR(n) {
   return `₹${Number(n).toLocaleString('en-IN')}`;
 }
 
-const statuses = ['', 'placed', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded'];
+const AWAITING = 'awaiting_payment';
+const statuses = ['', AWAITING, 'placed', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'refunded'];
 
 export default function Orders() {
   const [status, setStatus] = useState('');
-  const { data, isLoading } = useAdminOrders({ status: status || undefined, limit: 100 });
+  const { data, isLoading } = useAdminOrders(
+    status === AWAITING ? { awaitingPayment: 1, limit: 100 } : { status: status || undefined, limit: 100 }
+  );
   const exportExcel = useExportOrdersExcel();
 
   return (
@@ -27,7 +31,7 @@ export default function Orders() {
             {exportExcel.isPending ? 'Preparing…' : 'Download Excel'}
           </button>
           <select className="input-field !w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
-            {statuses.map((s) => <option key={s} value={s}>{s ? s.replace('_', ' ') : 'All statuses'}</option>)}
+            {statuses.map((s) => <option key={s} value={s}>{s ? s.replaceAll('_', ' ') : 'All statuses'}</option>)}
           </select>
         </div>
       </div>
@@ -44,7 +48,10 @@ export default function Orders() {
                 <td>{new Date(o.createdAt).toLocaleDateString('en-IN')}</td>
                 <td>{o.shippingAddress.fullName}</td>
                 <td>{formatINR(o.total)}</td>
-                <td>{o.paymentMethod.toUpperCase()} · {o.paymentStatus}</td>
+                <td>
+                  {paymentMethodLabel(o.paymentMethod)} ·{' '}
+                  {isAwaitingPayment(o) ? <span className="text-amber-700 font-medium">awaiting approval</span> : o.paymentStatus}
+                </td>
                 <td className="capitalize">{o.currentStatus.replace('_', ' ')}</td>
                 <td><Link to={`/orders/${o._id}`} className="text-sm underline">View</Link></td>
               </tr>

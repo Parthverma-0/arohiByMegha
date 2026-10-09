@@ -21,6 +21,8 @@ import {
   adminListOrders,
   adminGetOrder,
   adminUpdateOrderStatus,
+  adminReviewPayment,
+  reviewPaymentSchema,
   updateStatusSchema,
   adminExportOrdersExcel,
   adminDownloadInvoice,
@@ -63,6 +65,13 @@ router.get('/orders/export/excel', adminExportOrdersExcel);
 router.get('/orders/:id', adminGetOrder);
 router.get('/orders/:id/invoice', adminDownloadInvoice);
 router.post('/orders/:id/invoice/email', audit('invoice.email', 'Order'), adminEmailInvoice);
+router.post(
+  '/orders/:id/payment',
+  requireAdminAuth('owner', 'manager'),
+  validate(reviewPaymentSchema),
+  audit('order.payment_review', 'Order'),
+  adminReviewPayment
+);
 router.put(
   '/orders/:id/status',
   requireAdminAuth('owner', 'manager'),

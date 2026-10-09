@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAdminOrder, useUpdateOrderStatus } from '../api/misc.js';
 import InvoiceActions from '../components/InvoiceActions.jsx';
+import PaymentReview, { isAwaitingPayment, paymentMethodLabel } from '../components/PaymentReview.jsx';
 import { apiErrorMessage } from '../api/client.js';
 
 function formatINR(n) {
@@ -42,12 +43,23 @@ export default function OrderDetail() {
           <p className="text-sm text-charcoal/70">
             {order.shippingAddress.line1}, {order.shippingAddress.line2 ? `${order.shippingAddress.line2}, ` : ''}
             {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.pincode}
+            {order.shippingAddress.country && order.shippingAddress.country !== 'India' ? `, ${order.shippingAddress.country}` : ''}
           </p>
         </div>
         <div className="card">
           <h2 className="font-medium mb-2">Payment</h2>
-          <p className="text-sm">{order.paymentMethod.toUpperCase()} · {order.paymentStatus}</p>
-          <p className="text-sm text-charcoal/70">Total: {formatINR(order.total)} (Subtotal {formatINR(order.subtotal)}, Discount {formatINR(order.discount)})</p>
+          <p className="text-sm">{paymentMethodLabel(order.paymentMethod)} · <span className={order.paymentStatus === 'paid' ? 'text-green-700' : ''}>{order.paymentStatus}</span></p>
+          <p className="text-sm text-charcoal/70">
+            Total: {formatINR(order.total)}{order.delivery?.feePending ? ' + delivery (agree on WhatsApp)' : ''} (Subtotal {formatINR(order.subtotal)}, Discount {formatINR(order.discount)}, Delivery {formatINR(order.shippingFee)})
+          </p>
+          {order.delivery?.note && <p className="text-xs text-charcoal/60 mt-1">{order.delivery.note}</p>}
+          {order.manualPayment?.reviewedAt && (
+            <p className="text-xs text-charcoal/60 mt-1">
+              {order.paymentStatus === 'paid' ? 'Approved' : 'Reviewed'} by {order.manualPayment.reviewedBy || 'admin'} on {new Date(order.manualPayment.reviewedAt).toLocaleString('en-IN')}
+              {order.manualPayment.reference ? ` · Ref ${order.manualPayment.reference}` : ''}
+            </p>
+          )}
+          {isAwaitingPayment(order) && <PaymentReview order={order} />}
         </div>
       </div>
 

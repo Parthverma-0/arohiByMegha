@@ -11,8 +11,10 @@ import { razorpay, isRazorpayConfigured, verifyPaymentSignature, verifyWebhookSi
 import { applyCoupon } from '../utils/pricing.js';
 import { buildOrdersWorkbook } from '../utils/orderExcelLog.js';
 import { ensureInvoiceNumber, buildInvoicePdf, invoiceFilename, emailInvoice } from '../utils/invoice.js';
+import { quoteDelivery } from '../utils/delivery.js';
 
-const FLAT_SHIPPING_FEE = 0; // free shipping for now; make this pincode/weight based later if needed
+// Orders are confirmed and paid (UPI QR code) over WhatsApp on this number.
+const WHATSAPP_NUMBER = (process.env.WHATSAPP_NUMBER || '919261873063').replace(/\D/g, '');
 
 const addressSchema = z.object({
   fullName: z.string().min(2),
@@ -22,8 +24,11 @@ const addressSchema = z.object({
   line2: z.string().optional(),
   city: z.string().min(2),
   state: z.string().min(2),
-  pincode: z.string().min(4).max(10),
-});
+  stateCode: z.string().optional(),
+  country: z.string().min(2).default('India'),
+  countryCode: z.string().length(2).default('IN'),
+  pincode: z.string().trim().min(4).max(10),
+}).refine((a) => a.countryCode !== 'IN' || /^\d{6}$/.test(a.pincode), { message: 'Please enter a valid 6-digit pincode', path: ['pincode'] });
 
 export const checkoutSchema = z.object({
   shippingAddress: addressSchema,
@@ -43,9 +48,10 @@ function getGuestOrUserOwner(req) {
   return { owner: guestId, ownerType: 'guest' };
 }
 
-// Prices the shopper's current cart and applies the coupon. Returns a plain
-// snapshot (no live documents) so it can be stored and turned into an order later.
-async function priceCheckout(req, couponCode) {
+// Prices the shopper's current cart, applies the coupon and works out the
+// delivery charge for the address. Returns a plain snapshot (no live
+// documents) so it can be stored and turned into an order later.
+async function priceCheckout(req, couponCode, shippingAddress) {
   const { owner, ownerType } = getGuestOrUserOwner(req);
   const cart = await Cart.findOne({ owner, ownerType });
   if (!cart || cart.items.length === 0) throw new ApiError(400, 'Your cart is empty');
@@ -63,14 +69,18 @@ async function priceCheckout(req, couponCode) {
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const coupon = await applyCoupon(couponCode, subtotal);
   const discount = round2(coupon.discount);
-  const total = round2(Math.max(0, subtotal + FLAT_SHIPPING_FEE - discount));
+  const afterDiscount = Math.max(0, subtotal - discount);
+  const quote = await quoteDelivery(afterDiscount, shippingAddress);
+  const shippingFee = quote.fee ?? 0;
   return {
     cartOwner: owner,
     cartOwnerType: ownerType,
     items,
     subtotal,
     coupon: coupon.code ? { code: coupon.code, discount, couponId: coupon.couponDoc._id } : undefined,
-    total,
+    shippingFee,
+    delivery: { distanceKm: quote.distanceKm, note: quote.note, feePending: quote.fee === null },
+    total: round2(afterDiscount + shippingFee),
   };
 }
 
@@ -83,7 +93,8 @@ async function finalizeOrder({ orderNumber, userId, checkout, shippingAddress, p
     shippingAddress,
     coupon: checkout.coupon?.code ? { code: checkout.coupon.code, discount } : undefined,
     subtotal: checkout.subtotal,
-    shippingFee: FLAT_SHIPPING_FEE,
+    shippingFee: checkout.shippingFee ?? 0,
+    delivery: checkout.delivery,
     discount,
     total: checkout.total,
     paymentMethod,
@@ -98,12 +109,58 @@ async function finalizeOrder({ orderNumber, userId, checkout, shippingAddress, p
   return order;
 }
 
-// COD checkout — creates the order immediately.
-export const createCodOrder = catchAsync(async (req, res) => {
+const formatINR = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
+
+// Pre-filled WhatsApp chat with the order, so the customer only has to hit
+// send; we reply with the payment QR code.
+async function whatsappUrlFor(order) {
+  const products = await Product.find({ _id: { $in: order.items.map((i) => i.product) } }).select('description');
+  const descById = new Map(products.map((p) => [String(p._id), p.description?.replace(/\s+/g, ' ').trim() || '']));
+  const clip = (text, n) => (text.length > n ? `${text.slice(0, n - 1).trimEnd()}…` : text);
+  const a = order.shippingAddress;
+
+  const lines = [`Hi Arohi by Megha! I'd like to place an order.`, '', `*Order #${order.orderNumber}*`];
+  order.items.forEach((item, i) => {
+    lines.push(`${i + 1}. *${item.name}* × ${item.quantity} — ${formatINR(item.price * item.quantity)}`);
+    const desc = descById.get(String(item.product));
+    if (desc) lines.push(`   _${clip(desc, 140)}_`);
+  });
+  lines.push('', `Subtotal: ${formatINR(order.subtotal)}`);
+  if (order.discount > 0) lines.push(`Discount${order.coupon?.code ? ` (${order.coupon.code})` : ''}: -${formatINR(order.discount)}`);
+  if (order.delivery?.feePending) lines.push('Delivery: to be confirmed');
+  else lines.push(`Delivery: ${order.shippingFee > 0 ? formatINR(order.shippingFee) : 'Free'}${order.delivery?.distanceKm ? ` (~${order.delivery.distanceKm} km)` : ''}`);
+  lines.push(`*Total: ${formatINR(order.total)}*${order.delivery?.feePending ? ' + delivery' : ''}`);
+  lines.push('', '*Deliver to:*', `${a.fullName}, ${a.phone}`, [a.line1, a.line2].filter(Boolean).join(', '), `${a.city}, ${a.state} - ${a.pincode}, ${a.country || 'India'}`);
+  lines.push('', 'Please share the QR code for payment.');
+
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join('\n'))}`;
+}
+
+export const deliveryQuoteSchema = z.object({
+  shippingAddress: z.object({
+    pincode: z.string().trim().optional(),
+    city: z.string().optional(),
+    stateCode: z.string().optional(),
+    countryCode: z.string().optional(),
+  }),
+  couponCode: z.string().optional(),
+});
+
+// Live delivery charge for the checkout summary, as the address is filled in.
+export const getDeliveryQuote = catchAsync(async (req, res) => {
   const { shippingAddress, couponCode } = req.body;
-  const checkout = await priceCheckout(req, couponCode);
-  const order = await finalizeOrder({ userId: req.userId, checkout, shippingAddress, paymentMethod: 'cod', paymentStatus: 'pending' });
-  res.status(201).json({ success: true, order });
+  const { subtotal, coupon, shippingFee, delivery, total } = await priceCheckout(req, couponCode, shippingAddress);
+  res.json({ success: true, subtotal, discount: coupon?.discount || 0, shippingFee, delivery, total });
+});
+
+// Online payment is paused: the order is recorded (and stock reserved) right
+// away as awaiting payment, then the customer is sent to WhatsApp to pay by
+// QR code. The admin approves the payment from the dashboard.
+export const createWhatsappOrder = catchAsync(async (req, res) => {
+  const { shippingAddress, couponCode } = req.body;
+  const checkout = await priceCheckout(req, couponCode, shippingAddress);
+  const order = await finalizeOrder({ userId: req.userId, checkout, shippingAddress, paymentMethod: 'manual_upi', paymentStatus: 'pending' });
+  res.status(201).json({ success: true, order, whatsappUrl: await whatsappUrlFor(order) });
 });
 
 // ----- Razorpay online payment -----
@@ -118,9 +175,10 @@ export const createCodOrder = catchAsync(async (req, res) => {
 //                        exactly once. Whichever arrives first wins.
 
 export const initiateRazorpayPayment = catchAsync(async (req, res) => {
-  if (!isRazorpayConfigured) throw new ApiError(503, 'Online payment is not set up yet — please use Cash on Delivery');
+  // Paused for now — set RAZORPAY_ENABLED=true (and re-add the option at checkout) to bring it back.
+  if (process.env.RAZORPAY_ENABLED !== 'true' || !isRazorpayConfigured) throw new ApiError(503, 'Online payment is paused — please order via WhatsApp');
   const { shippingAddress, couponCode } = req.body;
-  const checkout = await priceCheckout(req, couponCode);
+  const checkout = await priceCheckout(req, couponCode, shippingAddress);
   if (checkout.total <= 0) throw new ApiError(400, 'Nothing to pay online for this order');
 
   const orderNumber = generateOrderNumber();
@@ -242,10 +300,14 @@ export const myOrders = catchAsync(async (req, res) => {
 export const getMyOrder = catchAsync(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, user: req.userId });
   if (!order) throw new ApiError(404, 'Order not found');
-  res.json({ success: true, order });
+  const awaitingPayment = order.paymentMethod === 'manual_upi' && order.paymentStatus === 'pending' && order.currentStatus !== 'cancelled';
+  res.json({ success: true, order, whatsappUrl: awaitingPayment ? await whatsappUrlFor(order) : undefined });
 });
 
 // ----- Admin -----
+
+// Manual (QR code) orders the admin still has to approve or reject.
+export const AWAITING_PAYMENT = { paymentMethod: 'manual_upi', paymentStatus: 'pending', currentStatus: { $ne: 'cancelled' } };
 
 export const adminListOrders = catchAsync(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -253,6 +315,7 @@ export const adminListOrders = catchAsync(async (req, res) => {
   const filter = {};
   if (req.query.status) filter.currentStatus = req.query.status;
   if (req.query.paymentStatus) filter.paymentStatus = String(req.query.paymentStatus);
+  if (req.query.awaitingPayment) Object.assign(filter, AWAITING_PAYMENT);
 
   const [orders, total] = await Promise.all([
     Order.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
@@ -281,11 +344,54 @@ export const adminUpdateOrderStatus = catchAsync(async (req, res) => {
   order.statusHistory.push({ status, note });
   if (status === 'delivered' && order.paymentMethod === 'cod') order.paymentStatus = 'paid';
   if (status === 'refunded') order.paymentStatus = 'refunded';
+  if (status === 'cancelled') await restoreStock(order);
   await order.save();
 
   // Cash on Delivery is paid on delivery — that's when its invoice goes out.
   if (order.paymentStatus === 'paid' && !order.invoice?.emailedAt) await emailInvoice(order);
 
+  res.json({ success: true, order: await Order.findById(order._id) });
+});
+
+// Puts a cancelled order's items back on sale (once).
+async function restoreStock(order) {
+  if (order.stockRestored) return;
+  await Promise.all(order.items.map(({ product, quantity }) => Product.updateOne({ _id: product }, { $inc: { stock: quantity } })));
+  order.stockRestored = true;
+}
+
+export const reviewPaymentSchema = z.object({
+  decision: z.enum(['approve', 'reject']),
+  reference: z.string().trim().max(100).optional(), // UPI transaction / UTR number
+  note: z.string().trim().max(500).optional(),
+});
+
+// Manual (QR code) payments: the admin checks the money arrived and approves
+// the order, or rejects it, which cancels it and releases the stock.
+export const adminReviewPayment = catchAsync(async (req, res) => {
+  const { decision, reference, note } = req.body;
+  const order = await Order.findById(req.params.id);
+  if (!order) throw new ApiError(404, 'Order not found');
+  if (order.paymentStatus !== 'pending') throw new ApiError(400, `Payment is already ${order.paymentStatus}`);
+  if (order.currentStatus === 'cancelled') throw new ApiError(400, 'This order is cancelled');
+
+  order.manualPayment = { reference, note, reviewedAt: new Date(), reviewedBy: req.admin?.email };
+  if (decision === 'approve') {
+    order.paymentStatus = 'paid';
+    if (order.currentStatus === 'placed') {
+      order.currentStatus = 'confirmed';
+      order.statusHistory.push({ status: 'confirmed', note: `Payment approved${reference ? ` (ref ${reference})` : ''}` });
+    }
+  } else {
+    order.paymentStatus = 'failed';
+    order.currentStatus = 'cancelled';
+    order.statusHistory.push({ status: 'cancelled', note: `Payment rejected${note ? ` — ${note}` : ''}` });
+    await restoreStock(order);
+    if (order.coupon?.code) await Coupon.updateOne({ code: order.coupon.code, timesUsed: { $gt: 0 } }, { $inc: { timesUsed: -1 } });
+  }
+  await order.save();
+
+  if (order.paymentStatus === 'paid' && !order.invoice?.emailedAt) await emailInvoice(order);
   res.json({ success: true, order: await Order.findById(order._id) });
 });
 

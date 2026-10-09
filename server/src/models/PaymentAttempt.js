@@ -24,6 +24,8 @@ const paymentAttemptSchema = new mongoose.Schema(
     shippingAddress: { type: Object, required: true },
     coupon: { code: String, discount: Number, couponId: mongoose.Schema.Types.ObjectId },
     subtotal: Number,
+    shippingFee: Number,
+    delivery: Object,
     total: Number,
     // initiated → processing (claimed by one request) → completed | failed
     status: { type: String, enum: ['initiated', 'processing', 'completed', 'failed'], default: 'initiated' },

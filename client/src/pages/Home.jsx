@@ -59,9 +59,9 @@ export default function Home() {
       <section className="border-y border-charcoal/10 bg-blush/40">
         <div className="max-w-8xl mx-auto px-4 md:px-8 py-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center text-sm">
           <TrustBadge icon={<ExchangeIcon />} label="7-Day Easy Exchange" />
-          <TrustBadge icon={<CodIcon />} label="Cash on Delivery" />
+          <TrustBadge icon={<UpiIcon />} label="Pay by UPI" />
           <TrustBadge icon={<LockIcon />} label="Secure Checkout" />
-          <TrustBadge icon={<ShippingIcon />} label="Free Shipping" />
+          <TrustBadge icon={<ShippingIcon />} label="Free Delivery over ₹500" />
         </div>
       </section>
 
@@ -144,7 +144,7 @@ function ExchangeIcon() {
     </svg>
   );
 }
-function CodIcon() {
+function UpiIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
       <rect x="3" y="6" width="18" height="12" rx="2" />

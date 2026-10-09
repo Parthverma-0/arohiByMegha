@@ -7,7 +7,7 @@ const policies = {
     body: [
       ['How long does delivery take?', 'Orders are typically delivered within 4-7 business days across India.'],
       ['Can I exchange a product?', 'Yes, most items can be exchanged within 7 days of delivery. Earrings are non-returnable for hygiene reasons.'],
-      ['Do you offer Cash on Delivery?', 'Yes, COD is available alongside UPI, cards and net banking.'],
+      ['Do you offer Cash on Delivery?', 'Not at the moment. You place your order on the website, it opens in WhatsApp, and you pay by UPI QR code. Your order is confirmed once we receive the payment.'],
       ['How do I track my order?', 'Once shipped, you can track your order from the My Orders section of your account.'],
     ],
   },
@@ -15,7 +15,7 @@ const policies = {
     title: 'Shipping & Delivery',
     body: [
       ['Delivery Timeline', 'Orders are processed within 1-2 business days and delivered within 4-7 business days depending on your location.'],
-      ['Shipping Charges', 'We currently offer free shipping across India on all orders.'],
+      ['Shipping Charges', 'Delivery is free on orders of ₹500 and above. Below ₹500, delivery is charged at ₹9 per km from our Jaipur studio, with a minimum of ₹90. The exact charge is shown at checkout. For deliveries outside India, we share the charges on WhatsApp.'],
       ['Serviceability', 'We deliver to most pincodes across India. Serviceability is confirmed at checkout.'],
     ],
   },

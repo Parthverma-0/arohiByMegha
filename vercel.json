@@ -2,7 +2,7 @@
   "outputDirectory": "public",
   "functions": {
     "api/index.js": {
-      "includeFiles": "server/node_modules/pdfkit/js/data/**"
+      "includeFiles": "server/node_modules/{pdfkit/js/data,country-state-city/lib/cjs/assets}/**"
     }
   },
   "rewrites": [

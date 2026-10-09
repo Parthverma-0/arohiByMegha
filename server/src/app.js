@@ -21,6 +21,7 @@ import couponRoutes from './routes/couponRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import siteContentRoutes from './routes/siteContentRoutes.js';
+import locationRoutes from './routes/locationRoutes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -91,6 +92,7 @@ export function createApp() {
   app.use('/api/coupons', couponRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/site-content', siteContentRoutes);
+  app.use('/api/locations', locationRoutes);
   app.use('/api/admin', adminRoutes);
 
   if (isProd) {

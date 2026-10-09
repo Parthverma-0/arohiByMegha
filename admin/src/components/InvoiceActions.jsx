@@ -62,7 +62,7 @@ export function InvoiceEmailStatus({ order }) {
   }
   if (inv.emailError) return <p className="text-sm text-red-700">Email failed: {inv.emailError}</p>;
   if (order.paymentStatus !== 'paid') {
-    return <p className="text-sm text-charcoal/60">Will be emailed automatically once paid{order.paymentMethod === 'cod' ? ' (when marked Delivered)' : ''}</p>;
+    return <p className="text-sm text-charcoal/60">Will be emailed automatically once paid{order.paymentMethod === 'cod' ? ' (when marked Delivered)' : order.paymentMethod === 'manual_upi' ? ' (when you approve the payment)' : ''}</p>;
   }
   return <p className="text-sm text-charcoal/60">Not emailed yet</p>;
 }

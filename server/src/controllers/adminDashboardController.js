@@ -3,11 +3,12 @@ import Product from '../models/Product.js';
 import User from '../models/User.js';
 import AuditLog from '../models/AuditLog.js';
 import { catchAsync } from '../utils/catchAsync.js';
+import { AWAITING_PAYMENT } from './orderController.js';
 
 export const getStats = catchAsync(async (req, res) => {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  const [totalOrders, recentOrders, totalCustomers, totalProducts, lowStock, revenueAgg] = await Promise.all([
+  const [totalOrders, recentOrders, totalCustomers, totalProducts, lowStock, revenueAgg, awaitingPayment] = await Promise.all([
     Order.countDocuments({}),
     Order.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
     User.countDocuments({}),
@@ -17,6 +18,7 @@ export const getStats = catchAsync(async (req, res) => {
       { $match: { paymentStatus: 'paid' } },
       { $group: { _id: null, revenue: { $sum: '$total' }, count: { $sum: 1 } } },
     ]),
+    Order.countDocuments(AWAITING_PAYMENT),
   ]);
 
   const revenue = revenueAgg[0]?.revenue || 0;
@@ -32,7 +34,7 @@ export const getStats = catchAsync(async (req, res) => {
 
   res.json({
     success: true,
-    stats: { totalOrders, recentOrders, totalCustomers, totalProducts, lowStock, revenue, avgOrderValue, topProducts },
+    stats: { awaitingPayment, totalOrders, recentOrders, totalCustomers, totalProducts, lowStock, revenue, avgOrderValue, topProducts },
   });
 });
 
