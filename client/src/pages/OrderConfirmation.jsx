@@ -44,7 +44,7 @@ export default function OrderConfirmation() {
     );
   }
 
-  const paymentLabel = { cod: 'Cash on Delivery', razorpay: 'Online Payment', manual_upi: 'UPI QR code (via WhatsApp)' }[order.paymentMethod];
+  const paymentLabel = order.paymentMethod === 'manual_upi' ? 'UPI QR code (via WhatsApp)' : 'Online Payment';
 
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-8 py-14 text-center">
@@ -94,9 +94,7 @@ export default function OrderConfirmation() {
           <p className="text-sm text-charcoal/60 mt-1">
             {order.invoice?.emailedAt
               ? `Your invoice has been emailed to ${order.invoice.emailedTo}.`
-              : order.paymentMethod === 'cod'
-                ? `Your invoice will be emailed to ${order.shippingAddress.email} once payment is received on delivery.`
-                : `Your invoice will be emailed to ${order.shippingAddress.email} once payment is confirmed.`}
+              : `Your invoice will be emailed to ${order.shippingAddress.email} once payment is confirmed.`}
           </p>
         )}
       </div>

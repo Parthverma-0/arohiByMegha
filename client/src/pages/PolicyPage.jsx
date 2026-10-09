@@ -7,7 +7,7 @@ const policies = {
     body: [
       ['How long does delivery take?', 'Orders are typically delivered within 4-7 business days across India.'],
       ['Can I exchange a product?', 'Yes, most items can be exchanged within 7 days of delivery. Earrings are non-returnable for hygiene reasons.'],
-      ['Do you offer Cash on Delivery?', 'Not at the moment. You place your order on the website, it opens in WhatsApp, and you pay by UPI QR code. Your order is confirmed once we receive the payment.'],
+      ['How do I pay?', 'You place your order on the website, it opens in WhatsApp, and you pay by UPI QR code. Your order is confirmed once we receive the payment.'],
       ['How do I track my order?', 'Once shipped, you can track your order from the My Orders section of your account.'],
     ],
   },
