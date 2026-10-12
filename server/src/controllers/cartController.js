@@ -43,7 +43,16 @@ async function getOrCreateCart(req, res) {
 async function hydrate(cart) {
   const productIds = cart.items.map((i) => i.product);
   const products = await Product.find({ _id: { $in: productIds } }).populate('category', 'name slug');
-  const byId = new Map(products.map((p) => [String(p._id), p]));
+  const byId = new Map(products.filter((p) => p.isActive).map((p) => [String(p._id), p]));
+
+  // Drop products that were deleted or hidden since they were added, so the
+  // cart the shopper sees is exactly what checkout will accept.
+  const available = cart.items.filter((i) => byId.has(String(i.product)));
+  if (available.length !== cart.items.length) {
+    cart.items = available;
+    await cart.save();
+  }
+
   const items = cart.items
     .map((item) => {
       const product = byId.get(String(item.product));
