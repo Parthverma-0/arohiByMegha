@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { useReviewPayment } from '../api/misc.js';
 import { apiErrorMessage } from '../api/client.js';
 
-// Approve / reject a UPI QR code payment taken over WhatsApp. Approving
+// Approve / reject an older UPI QR code payment taken over WhatsApp. Approving
 // confirms the order and emails the invoice; rejecting cancels the order and
 // puts its items back in stock.
 export default function PaymentReview({ order, compact = false }) {

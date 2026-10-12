@@ -48,12 +48,11 @@ function locateCity({ countryCode, stateCode, city }) {
 }
 
 // Returns { fee, distanceKm, note }. fee is null when it can't be worked out
-// automatically (outside India, or an address we couldn't locate) — the
-// order still goes through and the fee is agreed on WhatsApp.
+// automatically (outside India) — such orders can't be paid online yet.
 export async function quoteDelivery(address = {}) {
   const countryCode = address.countryCode || 'IN';
   if (countryCode !== 'IN') {
-    return { fee: null, distanceKm: null, note: 'International delivery — charges will be shared on WhatsApp' };
+    return { fee: null, distanceKm: null, note: 'We currently deliver within India only — please contact us for international orders' };
   }
 
   const pincode = String(address.pincode || '').trim();

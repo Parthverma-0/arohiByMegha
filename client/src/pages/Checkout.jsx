@@ -3,13 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useCart } from '../api/cart.js';
-import { usePlaceWhatsappOrder, usePreviewCoupon, useDeliveryQuote } from '../api/orders.js';
+import { useInitiateRazorpayPayment, useVerifyRazorpayPayment, usePreviewCoupon, useDeliveryQuote } from '../api/orders.js';
 import { useCountries, useStates, useCities } from '../api/locations.js';
 import { apiErrorMessage } from '../api/client.js';
 import { formatINR } from '../components/ui/PriceTag.jsx';
 import { useAuthStore } from '../store/authStore.js';
 
 const OTHER_CITY = '__other__';
+
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 
 const emptyAddress = {
   fullName: '', phone: '', email: '', line1: '', line2: '',
@@ -22,6 +33,8 @@ export default function Checkout() {
   const [cityIsOther, setCityIsOther] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [coupon, setCoupon] = useState(null);
+  const [placing, setPlacing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const navigate = useNavigate();
   const user = useAuthStore((st) => st.user);
 
@@ -34,7 +47,8 @@ export default function Checkout() {
   const { data: states = [] } = useStates(address.countryCode);
   const { data: cities = [] } = useCities(address.countryCode, address.stateCode);
   const quote = useDeliveryQuote({ address, couponCode: coupon?.code, cartSubtotal: cart?.subtotal });
-  const placeOrder = usePlaceWhatsappOrder();
+  const initiateRazorpay = useInitiateRazorpayPayment();
+  const verifyRazorpay = useVerifyRazorpayPayment();
   const previewCoupon = usePreviewCoupon();
 
   if (isLoading) return <div className="max-w-4xl mx-auto px-4 py-20">Loading...</div>;
@@ -55,7 +69,7 @@ export default function Checkout() {
   let deliveryLabel = isIndia ? 'Enter pincode' : 'Select country';
   if (quote.isFetching) deliveryLabel = 'Calculating…';
   else if (quote.isError) deliveryLabel = '—';
-  else if (q?.delivery?.feePending) deliveryLabel = 'Confirmed on WhatsApp';
+  else if (q?.delivery?.feePending) deliveryLabel = 'Not available';
   else if (q) deliveryLabel = q.shippingFee > 0 ? formatINR(q.shippingFee) : 'Free';
 
   function updateField(field, value) {
@@ -100,17 +114,72 @@ export default function Checkout() {
       return toast.error('Please enter a valid email — your invoice will be sent there');
     }
 
+    setPlacing(true);
     try {
-      const { order, whatsappUrl } = await placeOrder.mutateAsync({ shippingAddress: address, couponCode: coupon?.code });
-      navigate(`/order-confirmation/${order._id}`, { state: { order, whatsappUrl } });
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        toast.error('Could not load the payment gateway. Please check your connection and try again.');
+        setPlacing(false);
+        return;
+      }
+
+      const { razorpayOrderId, amount, keyId } = await initiateRazorpay.mutateAsync({
+        shippingAddress: address,
+        couponCode: coupon?.code,
+      });
+
+      const rzp = new window.Razorpay({
+        key: keyId,
+        amount,
+        currency: 'INR',
+        name: 'Arohi by Megha',
+        order_id: razorpayOrderId,
+        prefill: { name: address.fullName, contact: address.phone, email: address.email },
+        theme: { color: '#A9812F' },
+        // The server re-checks the payment with Razorpay before creating the order.
+        handler: async (response) => {
+          setConfirming(true);
+          try {
+            const data = await verifyRazorpay.mutateAsync({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            if (data.order) navigate(`/order-confirmation/${data.order._id}`, { state: { order: data.order } });
+            else toast(data.message, { duration: 8000 });
+          } catch (err) {
+            toast.error(apiErrorMessage(err, 'Payment verification failed'));
+          } finally {
+            setConfirming(false);
+            setPlacing(false);
+          }
+        },
+        modal: { ondismiss: () => setPlacing(false) },
+      });
+      // Razorpay keeps its window open after a failed attempt so the shopper can
+      // retry; tell them why it failed rather than leaving them guessing.
+      rzp.on('payment.failed', (response) => {
+        toast.error(response?.error?.description || 'Payment failed. Please try again or use another method.', { duration: 8000 });
+      });
+      rzp.open();
+      // Left in the "placing" state on purpose — the Razorpay modal now owns
+      // resetting it, via either the handler above or modal.ondismiss.
     } catch (err) {
-      toast.error(apiErrorMessage(err, 'Could not place order'));
+      toast.error(apiErrorMessage(err, 'Could not start payment'));
+      setPlacing(false);
     }
   }
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-10 md:py-14">
       <Helmet><title>Checkout | Arohi by Megha</title></Helmet>
+      {confirming && (
+        <div className="fixed inset-0 z-50 bg-ivory/95 flex flex-col items-center justify-center text-center px-6">
+          <div className="w-10 h-10 border-2 border-gold-dark border-t-transparent rounded-full animate-spin" />
+          <p className="mt-5 font-display text-2xl">Confirming your payment…</p>
+          <p className="mt-2 text-sm text-charcoal/60">Please don't close or refresh this page.</p>
+        </div>
+      )}
       <h1 className="section-heading mb-8">Checkout</h1>
 
       <div className="grid md:grid-cols-[1fr_340px] gap-10">
@@ -118,7 +187,7 @@ export default function Checkout() {
           <h2 className="font-medium mb-4">Shipping Address</h2>
           <div className="grid sm:grid-cols-2 gap-4">
             <input className="input-field" placeholder="Full Name*" value={address.fullName} onChange={(e) => updateField('fullName', e.target.value)} />
-            <input className="input-field" type="tel" placeholder="Phone (WhatsApp)*" value={address.phone} onChange={(e) => updateField('phone', e.target.value)} />
+            <input className="input-field" type="tel" placeholder="Phone*" value={address.phone} onChange={(e) => updateField('phone', e.target.value)} />
             <input className="input-field sm:col-span-2" type="email" placeholder="Email* (your invoice is sent here)" value={address.email} onChange={(e) => updateField('email', e.target.value)} />
             <input className="input-field sm:col-span-2" placeholder="House / Flat, Street*" value={address.line1} onChange={(e) => updateField('line1', e.target.value)} />
             <input className="input-field sm:col-span-2" placeholder="Area, Landmark" value={address.line2} onChange={(e) => updateField('line2', e.target.value)} />
@@ -163,11 +232,8 @@ export default function Checkout() {
 
           <h2 className="font-medium mt-8 mb-4">Payment</h2>
           <div className="border border-charcoal/15 rounded-lg p-4 text-sm text-charcoal/80 space-y-2">
-            <p className="font-medium text-charcoal">Pay by UPI QR code on WhatsApp</p>
-            <p>
-              When you place the order, WhatsApp opens with your order details already filled in — just hit send.
-              We'll reply with our QR code, and your order is confirmed as soon as we receive the payment.
-            </p>
+            <p className="font-medium text-charcoal">UPI / Card / Net Banking / Wallet</p>
+            <p>You'll pay securely through Razorpay. Your order is confirmed as soon as the payment goes through.</p>
           </div>
         </div>
 
@@ -183,11 +249,11 @@ export default function Checkout() {
           {quote.isError && <p className="text-xs text-red-700 -mt-1">{apiErrorMessage(quote.error, 'Could not work out delivery')}</p>}
           <div className="flex justify-between font-medium text-base border-t border-charcoal/15 pt-3">
             <span>Total</span>
-            <span>{formatINR(total)}{q?.delivery?.feePending ? ' + delivery' : ''}</span>
+            <span>{formatINR(total)}</span>
           </div>
           <p className="text-xs text-charcoal/60">Delivery is ₹9 per km from Jaipur, minimum ₹90.</p>
-          <button className="btn-primary w-full mt-2" onClick={submit} disabled={placeOrder.isPending || quote.isFetching}>
-            {placeOrder.isPending ? 'Placing order…' : 'Place Order on WhatsApp'}
+          <button className="btn-primary w-full mt-2" onClick={submit} disabled={placing || quote.isFetching || q?.delivery?.feePending}>
+            {placing ? 'Opening payment…' : q ? `Pay ${formatINR(total)}` : 'Pay Now'}
           </button>
         </div>
       </div>

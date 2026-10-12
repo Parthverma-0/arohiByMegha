@@ -7,7 +7,7 @@ const policies = {
     body: [
       ['How long does delivery take?', 'Orders are typically delivered within 4-7 business days across India.'],
       ['Can I exchange a product?', 'Yes, most items can be exchanged within 7 days of delivery. Earrings are non-returnable for hygiene reasons.'],
-      ['How do I pay?', 'You place your order on the website, it opens in WhatsApp, and you pay by UPI QR code. Your order is confirmed once we receive the payment.'],
+      ['How do I pay?', 'You pay online at checkout through Razorpay — UPI, credit/debit card, net banking or wallet. Your order is confirmed as soon as the payment goes through.'],
       ['How do I track my order?', 'Once shipped, you can track your order from the My Orders section of your account.'],
     ],
   },
@@ -15,7 +15,7 @@ const policies = {
     title: 'Shipping & Delivery',
     body: [
       ['Delivery Timeline', 'Orders are processed within 1-2 business days and delivered within 4-7 business days depending on your location.'],
-      ['Shipping Charges', 'Delivery is charged at ₹9 per km from our Jaipur studio, with a minimum of ₹90. The exact charge is shown at checkout. For deliveries outside India, we share the charges on WhatsApp.'],
+      ['Shipping Charges', 'Delivery is charged at ₹9 per km from our Jaipur studio, with a minimum of ₹90. The exact charge is shown at checkout. We currently deliver within India only.'],
       ['Serviceability', 'We deliver to most pincodes across India. Serviceability is confirmed at checkout.'],
     ],
   },

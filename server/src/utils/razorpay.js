@@ -10,7 +10,7 @@ export const razorpay = configured
   : null;
 
 if (!configured) {
-  console.warn('[razorpay] Keys not set — online payment is unavailable (it is paused anyway; orders go through WhatsApp)');
+  console.warn('[razorpay] Keys not set — online payment is unavailable');
 }
 
 function safeEqual(a, b) {

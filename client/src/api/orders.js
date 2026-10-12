@@ -1,15 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client.js';
 
-// Resolves with { order, whatsappUrl }.
-export function usePlaceWhatsappOrder() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload) => (await api.post('/orders/whatsapp', payload)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['cart'] }),
-  });
-}
-
 // Delivery charge for the address being typed in. Only runs once there's
 // enough of an address to price (a full pincode, or a non-India country).
 export function useDeliveryQuote({ address, couponCode, cartSubtotal }) {
@@ -53,11 +44,10 @@ export function useMyOrders() {
   });
 }
 
-// Resolves with { order, whatsappUrl } (whatsappUrl only while awaiting payment).
 export function useMyOrder(id) {
   return useQuery({
     queryKey: ['my-order', id],
-    queryFn: async () => (await api.get(`/orders/mine/${id}`)).data,
+    queryFn: async () => (await api.get(`/orders/mine/${id}`)).data.order,
     enabled: Boolean(id),
   });
 }

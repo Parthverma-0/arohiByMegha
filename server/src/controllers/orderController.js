@@ -13,9 +13,6 @@ import { buildOrdersWorkbook } from '../utils/orderExcelLog.js';
 import { ensureInvoiceNumber, buildInvoicePdf, invoiceFilename, emailInvoice } from '../utils/invoice.js';
 import { quoteDelivery } from '../utils/delivery.js';
 
-// Orders are confirmed and paid (UPI QR code) over WhatsApp on this number.
-const WHATSAPP_NUMBER = (process.env.WHATSAPP_NUMBER || '919261873063').replace(/\D/g, '');
-
 const addressSchema = z.object({
   fullName: z.string().min(2),
   phone: z.string().min(10).max(15),
@@ -109,33 +106,6 @@ async function finalizeOrder({ orderNumber, userId, checkout, shippingAddress, p
   return order;
 }
 
-const formatINR = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
-
-// Pre-filled WhatsApp chat with the order, so the customer only has to hit
-// send; we reply with the payment QR code.
-async function whatsappUrlFor(order) {
-  const products = await Product.find({ _id: { $in: order.items.map((i) => i.product) } }).select('description');
-  const descById = new Map(products.map((p) => [String(p._id), p.description?.replace(/\s+/g, ' ').trim() || '']));
-  const clip = (text, n) => (text.length > n ? `${text.slice(0, n - 1).trimEnd()}…` : text);
-  const a = order.shippingAddress;
-
-  const lines = [`Hi Arohi by Megha! I'd like to place an order.`, '', `*Order #${order.orderNumber}*`];
-  order.items.forEach((item, i) => {
-    lines.push(`${i + 1}. *${item.name}* × ${item.quantity} — ${formatINR(item.price * item.quantity)}`);
-    const desc = descById.get(String(item.product));
-    if (desc) lines.push(`   _${clip(desc, 140)}_`);
-  });
-  lines.push('', `Subtotal: ${formatINR(order.subtotal)}`);
-  if (order.discount > 0) lines.push(`Discount${order.coupon?.code ? ` (${order.coupon.code})` : ''}: -${formatINR(order.discount)}`);
-  if (order.delivery?.feePending) lines.push('Delivery: to be confirmed');
-  else lines.push(`Delivery: ${order.shippingFee > 0 ? formatINR(order.shippingFee) : 'Free'}${order.delivery?.distanceKm ? ` (~${order.delivery.distanceKm} km)` : ''}`);
-  lines.push(`*Total: ${formatINR(order.total)}*${order.delivery?.feePending ? ' + delivery' : ''}`);
-  lines.push('', '*Deliver to:*', `${a.fullName}, ${a.phone}`, [a.line1, a.line2].filter(Boolean).join(', '), `${a.city}, ${a.state} - ${a.pincode}, ${a.country || 'India'}`);
-  lines.push('', 'Please share the QR code for payment.');
-
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join('\n'))}`;
-}
-
 export const deliveryQuoteSchema = z.object({
   shippingAddress: z.object({
     pincode: z.string().trim().optional(),
@@ -153,16 +123,6 @@ export const getDeliveryQuote = catchAsync(async (req, res) => {
   res.json({ success: true, subtotal, discount: coupon?.discount || 0, shippingFee, delivery, total });
 });
 
-// Online payment is paused: the order is recorded (and stock reserved) right
-// away as awaiting payment, then the customer is sent to WhatsApp to pay by
-// QR code. The admin approves the payment from the dashboard.
-export const createWhatsappOrder = catchAsync(async (req, res) => {
-  const { shippingAddress, couponCode } = req.body;
-  const checkout = await priceCheckout(req, couponCode, shippingAddress);
-  const order = await finalizeOrder({ userId: req.userId, checkout, shippingAddress, paymentMethod: 'manual_upi', paymentStatus: 'pending' });
-  res.status(201).json({ success: true, order, whatsappUrl: await whatsappUrlFor(order) });
-});
-
 // ----- Razorpay online payment -----
 //
 // 1. /razorpay/initiate  prices the cart, creates a Razorpay order and
@@ -175,10 +135,11 @@ export const createWhatsappOrder = catchAsync(async (req, res) => {
 //                        exactly once. Whichever arrives first wins.
 
 export const initiateRazorpayPayment = catchAsync(async (req, res) => {
-  // Paused for now — set RAZORPAY_ENABLED=true (and re-add the option at checkout) to bring it back.
-  if (process.env.RAZORPAY_ENABLED !== 'true' || !isRazorpayConfigured) throw new ApiError(503, 'Online payment is paused — please order via WhatsApp');
+  if (!isRazorpayConfigured) throw new ApiError(503, 'Online payment is not available right now — please try again later');
   const { shippingAddress, couponCode } = req.body;
   const checkout = await priceCheckout(req, couponCode, shippingAddress);
+  // The delivery charge has to be known up front to take the full amount online.
+  if (checkout.delivery.feePending) throw new ApiError(400, 'We can only take orders for delivery within India online right now — please contact us for international orders');
   if (checkout.total <= 0) throw new ApiError(400, 'Nothing to pay online for this order');
 
   const orderNumber = generateOrderNumber();
@@ -300,13 +261,12 @@ export const myOrders = catchAsync(async (req, res) => {
 export const getMyOrder = catchAsync(async (req, res) => {
   const order = await Order.findOne({ _id: req.params.id, user: req.userId });
   if (!order) throw new ApiError(404, 'Order not found');
-  const awaitingPayment = order.paymentMethod === 'manual_upi' && order.paymentStatus === 'pending' && order.currentStatus !== 'cancelled';
-  res.json({ success: true, order, whatsappUrl: awaitingPayment ? await whatsappUrlFor(order) : undefined });
+  res.json({ success: true, order });
 });
 
 // ----- Admin -----
 
-// Manual (QR code) orders the admin still has to approve or reject.
+// Older manual (UPI QR code) orders the admin still has to approve or reject.
 export const AWAITING_PAYMENT = { paymentMethod: 'manual_upi', paymentStatus: 'pending', currentStatus: { $ne: 'cancelled' } };
 
 export const adminListOrders = catchAsync(async (req, res) => {

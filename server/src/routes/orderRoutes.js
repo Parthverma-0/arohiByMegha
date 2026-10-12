@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { validate } from '../middleware/validate.js';
 import { attachCustomerIfPresent, requireCustomerAuth } from '../middleware/auth.js';
 import {
-  createWhatsappOrder,
   getDeliveryQuote,
   deliveryQuoteSchema,
   initiateRazorpayPayment,
@@ -18,7 +17,6 @@ import {
 const router = Router();
 
 router.post('/delivery-quote', attachCustomerIfPresent, validate(deliveryQuoteSchema), getDeliveryQuote);
-router.post('/whatsapp', attachCustomerIfPresent, validate(checkoutSchema), createWhatsappOrder);
 router.post('/razorpay/initiate', attachCustomerIfPresent, validate(checkoutSchema), initiateRazorpayPayment);
 router.post('/razorpay/verify', validate(verifyRazorpaySchema), verifyRazorpayPayment);
 // Called by Razorpay's servers, not by our frontend; authenticated by signature.

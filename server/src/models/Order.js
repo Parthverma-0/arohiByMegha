@@ -55,8 +55,8 @@ const orderSchema = new mongoose.Schema(
     shippingFee: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
     total: { type: Number, required: true },
-    // 'cod' and 'razorpay' are kept for older orders; new orders are 'manual_upi'
-    // (customer pays by QR code over WhatsApp, admin approves the payment).
+    // New orders are 'razorpay'; 'cod' and 'manual_upi' (UPI QR code over
+    // WhatsApp, approved by the admin) are kept for older orders.
     paymentMethod: { type: String, enum: ['cod', 'razorpay', 'manual_upi'], required: true },
     paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' },
     razorpay: {
@@ -73,7 +73,7 @@ const orderSchema = new mongoose.Schema(
     delivery: {
       distanceKm: Number,
       note: String,
-      feePending: { type: Boolean, default: false }, // fee to be agreed on WhatsApp (e.g. international)
+      feePending: { type: Boolean, default: false }, // fee not worked out automatically (international)
     },
     stockRestored: { type: Boolean, default: false }, // stock put back after cancellation
     currentStatus: {

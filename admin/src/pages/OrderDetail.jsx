@@ -50,7 +50,7 @@ export default function OrderDetail() {
           <h2 className="font-medium mb-2">Payment</h2>
           <p className="text-sm">{paymentMethodLabel(order.paymentMethod)} · <span className={order.paymentStatus === 'paid' ? 'text-green-700' : ''}>{order.paymentStatus}</span></p>
           <p className="text-sm text-charcoal/70">
-            Total: {formatINR(order.total)}{order.delivery?.feePending ? ' + delivery (agree on WhatsApp)' : ''} (Subtotal {formatINR(order.subtotal)}, Discount {formatINR(order.discount)}, Delivery {formatINR(order.shippingFee)})
+            Total: {formatINR(order.total)}{order.delivery?.feePending ? ' + delivery' : ''} (Subtotal {formatINR(order.subtotal)}, Discount {formatINR(order.discount)}, Delivery {formatINR(order.shippingFee)})
           </p>
           {order.delivery?.note && <p className="text-xs text-charcoal/60 mt-1">{order.delivery.note}</p>}
           {order.manualPayment?.reviewedAt && (

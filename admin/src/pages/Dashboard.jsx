@@ -14,7 +14,7 @@ export default function Dashboard() {
   return (
     <div>
       <h1 className="font-display text-3xl mb-6">Dashboard</h1>
-      <AwaitingPayments count={stats.awaitingPayment} />
+      {stats.awaitingPayment > 0 && <AwaitingPayments count={stats.awaitingPayment} />}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Orders" value={stats.totalOrders} />
         <StatCard label="Orders (30 days)" value={stats.recentOrders} />
@@ -44,7 +44,8 @@ export default function Dashboard() {
   );
 }
 
-// Orders placed via WhatsApp whose QR code payment hasn't been checked yet.
+// Older WhatsApp orders whose UPI QR code payment hasn't been checked yet.
+// Only shown while there are some; new orders are paid online via Razorpay.
 function AwaitingPayments({ count }) {
   const { data } = useAdminOrders({ awaitingPayment: 1, limit: 50 });
   const orders = data?.orders || [];
