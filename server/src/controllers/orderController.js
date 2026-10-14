@@ -67,7 +67,7 @@ async function priceCheckout(req, couponCode, shippingAddress) {
   const coupon = await applyCoupon(couponCode, subtotal);
   const discount = round2(coupon.discount);
   const afterDiscount = Math.max(0, subtotal - discount);
-  const quote = await quoteDelivery(shippingAddress);
+  const quote = quoteDelivery(shippingAddress, afterDiscount);
   const shippingFee = quote.fee ?? 0;
   return {
     cartOwner: owner,
@@ -76,7 +76,7 @@ async function priceCheckout(req, couponCode, shippingAddress) {
     subtotal,
     coupon: coupon.code ? { code: coupon.code, discount, couponId: coupon.couponDoc._id } : undefined,
     shippingFee,
-    delivery: { distanceKm: quote.distanceKm, note: quote.note, feePending: quote.fee === null },
+    delivery: { note: quote.note, feePending: quote.fee === null },
     total: round2(afterDiscount + shippingFee),
   };
 }

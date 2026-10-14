@@ -251,7 +251,7 @@ export default function Checkout() {
             <span>Total</span>
             <span>{formatINR(total)}</span>
           </div>
-          <p className="text-xs text-charcoal/60">Delivery is ₹9 per km from Jaipur, minimum ₹90.</p>
+          <p className="text-xs text-charcoal/60">Free delivery on orders of ₹399 and above. Below that, a flat ₹90 delivery charge applies.</p>
           <button className="btn-primary w-full mt-2" onClick={submit} disabled={placing || quote.isFetching || q?.delivery?.feePending}>
             {placing ? 'Opening payment…' : q ? `Pay ${formatINR(total)}` : 'Pay Now'}
           </button>

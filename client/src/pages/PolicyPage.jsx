@@ -15,7 +15,7 @@ const policies = {
     title: 'Shipping & Delivery',
     body: [
       ['Delivery Timeline', 'Orders are processed within 1-2 business days and delivered within 4-7 business days depending on your location.'],
-      ['Shipping Charges', 'Delivery is charged at ₹9 per km from our Jaipur studio, with a minimum of ₹90. The exact charge is shown at checkout. We currently deliver within India only.'],
+      ['Shipping Charges', 'Delivery is free on orders of ₹399 and above. Orders below ₹399 have a flat delivery charge of ₹90. The exact charge is shown at checkout. We currently deliver within India only.'],
       ['Serviceability', 'We deliver to most pincodes across India. Serviceability is confirmed at checkout.'],
     ],
   },
