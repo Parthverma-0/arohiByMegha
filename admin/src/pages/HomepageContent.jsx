@@ -51,12 +51,7 @@ export default function HomepageContent() {
             label="Hero Video"
           />
         )}
-        <input className="input-field" placeholder="Heading" value={form.hero.heading} onChange={(e) => setForm({ ...form, hero: { ...form.hero, heading: e.target.value } })} />
-        <input className="input-field" placeholder="Subheading" value={form.hero.subheading} onChange={(e) => setForm({ ...form, hero: { ...form.hero, subheading: e.target.value } })} />
-        <div className="grid grid-cols-2 gap-4">
-          <input className="input-field" placeholder="CTA label" value={form.hero.ctaLabel} onChange={(e) => setForm({ ...form, hero: { ...form.hero, ctaLabel: e.target.value } })} />
-          <input className="input-field" placeholder="CTA link" value={form.hero.ctaLink} onChange={(e) => setForm({ ...form, hero: { ...form.hero, ctaLink: e.target.value } })} />
-        </div>
+        <input className="input-field" placeholder="Link when the hero is tapped (default /shop)" value={form.hero.ctaLink} onChange={(e) => setForm({ ...form, hero: { ...form.hero, ctaLink: e.target.value } })} />
       </section>
 
       <section className="card space-y-4">
