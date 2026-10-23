@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import { useProduct, useProductReviews } from '../api/products.js';
@@ -16,6 +16,7 @@ import ProductCard from '../components/ui/ProductCard.jsx';
 export default function ProductDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { data, isLoading } = useProduct(slug);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -32,7 +33,15 @@ export default function ProductDetail() {
   const images = product.images?.length ? product.images : [{ url: null, alt: product.name }];
   const outOfStock = product.stock <= 0;
 
+  function requireLogin() {
+    if (user) return false;
+    toast('Please log in to add items to your bag');
+    navigate('/login', { state: { from: location.pathname } });
+    return true;
+  }
+
   async function handleAddToCart() {
+    if (requireLogin()) return;
     try {
       await addToCart.mutateAsync({ productId: product._id, quantity });
       toast.success('Added to bag');
@@ -42,9 +51,10 @@ export default function ProductDetail() {
   }
 
   async function handleBuyNow() {
+    if (requireLogin()) return;
     try {
       await addToCart.mutateAsync({ productId: product._id, quantity });
-      navigate('/cart');
+      navigate('/checkout');
     } catch (err) {
       toast.error(apiErrorMessage(err));
     }

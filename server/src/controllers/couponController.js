@@ -6,14 +6,10 @@ import { catchAsync } from '../utils/catchAsync.js';
 import { ApiError } from '../utils/ApiError.js';
 import { applyCoupon } from '../utils/pricing.js';
 
-// Public — lets the cart/checkout page preview a coupon's discount before placing the order.
+// Logged-in shoppers only — lets the checkout page preview a coupon's discount before placing the order.
 export const previewCoupon = catchAsync(async (req, res) => {
   const { code } = req.body;
-  const owner = req.userId ? String(req.userId) : req.cookies?.guest_cart_id;
-  const ownerType = req.userId ? 'user' : 'guest';
-  if (!owner) throw new ApiError(400, 'Your cart is empty');
-
-  const cart = await Cart.findOne({ owner, ownerType });
+  const cart = await Cart.findOne({ owner: String(req.userId), ownerType: 'user' });
   if (!cart || cart.items.length === 0) throw new ApiError(400, 'Your cart is empty');
 
   const products = await Product.find({ _id: { $in: cart.items.map((i) => i.product) } });

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { validate } from '../middleware/validate.js';
-import { attachCustomerIfPresent } from '../middleware/auth.js';
+import { attachCustomerIfPresent, requireCustomerAuth } from '../middleware/auth.js';
 import {
   getCart,
   addItem,
@@ -13,12 +13,10 @@ import {
 
 const router = Router();
 
-router.use(attachCustomerIfPresent);
-
-router.get('/', getCart);
-router.post('/items', validate(itemInputSchema), addItem);
-router.patch('/items/:productId', validate(quantityInputSchema), updateItem);
-router.delete('/items/:productId', removeItem);
-router.delete('/', clearCart);
+router.get('/', attachCustomerIfPresent, getCart);
+router.post('/items', requireCustomerAuth, validate(itemInputSchema), addItem);
+router.patch('/items/:productId', requireCustomerAuth, validate(quantityInputSchema), updateItem);
+router.delete('/items/:productId', requireCustomerAuth, removeItem);
+router.delete('/', requireCustomerAuth, clearCart);
 
 export default router;

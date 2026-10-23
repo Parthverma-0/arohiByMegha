@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
-import Cart from '../models/Cart.js';
 import { catchAsync } from '../utils/catchAsync.js';
 import { ApiError } from '../utils/ApiError.js';
 import {
@@ -21,24 +20,6 @@ const GOOGLE_CLIENT_ID =
 const googleClient = new OAuth2Client();
 
 export const googleSchema = z.object({ credential: z.string().min(1) });
-
-async function mergeGuestCartIntoUser(req, userId) {
-  const guestId = req.cookies?.guest_cart_id;
-  if (!guestId) return;
-  const guestCart = await Cart.findOne({ owner: guestId, ownerType: 'guest' });
-  if (!guestCart || guestCart.items.length === 0) return;
-  let userCart = await Cart.findOne({ owner: String(userId), ownerType: 'user' });
-  if (!userCart) {
-    userCart = new Cart({ owner: String(userId), ownerType: 'user', items: [] });
-  }
-  for (const item of guestCart.items) {
-    const existing = userCart.items.find((i) => String(i.product) === String(item.product));
-    if (existing) existing.quantity += item.quantity;
-    else userCart.items.push(item);
-  }
-  await userCart.save();
-  await guestCart.deleteOne();
-}
 
 function sendAuthResponse(res, user) {
   const accessToken = signCustomerAccessToken(user);
@@ -75,7 +56,6 @@ export const googleLogin = catchAsync(async (req, res) => {
       user = await User.create({ name: payload.name || email.split('@')[0], email, googleId: payload.sub });
     }
   }
-  await mergeGuestCartIntoUser(req, user._id);
   sendAuthResponse(res, user);
 });
 

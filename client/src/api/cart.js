@@ -2,14 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client.js';
 import { useAuthStore } from '../store/authStore.js';
 
-// The server keeps a separate cart per identity (guest cookie vs logged-in
-// user), so the cache key has to follow the identity too. Waiting for session
-// hydration stops the first page load from fetching (and caching) the guest
-// cart for a shopper who is actually logged in.
+// Only logged-in shoppers have a cart, so the cache is keyed by user and the
+// query stays off for visitors (and while the session is still being restored).
 function useCartKey() {
-  const userId = useAuthStore((s) => s.user?._id || s.user?.id || null);
-  const isHydrating = useAuthStore((s) => s.isHydrating);
-  return { key: ['cart', userId || 'guest'], ready: !isHydrating };
+  const userId = useAuthStore((s) => s.user?.id || null);
+  return { key: ['cart', userId], ready: Boolean(userId) };
 }
 
 export function useCart() {

@@ -23,7 +23,7 @@ export function requireCustomerAuth(req, res, next) {
 }
 
 // Same as above but does not fail the request when no/invalid token is present —
-// used on routes that behave differently for guests vs logged-in customers (e.g. cart merge).
+// used on routes visitors may call too (e.g. viewing the bag, which is empty until they log in).
 export async function attachCustomerIfPresent(req, res, next) {
   const token = extractBearer(req);
   if (!token) return next();
@@ -32,9 +32,8 @@ export async function attachCustomerIfPresent(req, res, next) {
     req.userId = payload.sub;
   } catch {
     // A token that was sent but no longer verifies (usually just expired) must
-    // not silently downgrade the request to a guest — that swaps a logged-in
-    // shopper onto their guest cart mid-session. A 401 makes the client refresh
-    // its access token and retry against the right identity.
+    // not silently downgrade the request to a visitor — the shopper would see an
+    // empty bag mid-session. A 401 makes the client refresh its access token and retry.
     return next(new ApiError(401, 'Session expired, please log in again'));
   }
   next();

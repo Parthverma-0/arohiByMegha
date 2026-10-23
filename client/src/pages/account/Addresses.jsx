@@ -1,68 +1,78 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, apiErrorMessage } from '../../api/client.js';
-import { useAddAddress } from '../../api/user.js';
-
-const emptyAddress = { label: 'Home', fullName: '', phone: '', line1: '', line2: '', city: '', state: '', pincode: '', isDefault: false };
+import { apiErrorMessage } from '../../api/client.js';
+import { useAddresses, useAddAddress, useUpdateAddress, useDeleteAddress } from '../../api/user.js';
+import { useAuthStore } from '../../store/authStore.js';
+import AddressForm from '../../components/AddressForm.jsx';
+import AddressCard from '../../components/AddressCard.jsx';
 
 export default function Addresses() {
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(emptyAddress);
-  const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const { data: addresses = [], isPending } = useAddresses();
   const addAddress = useAddAddress();
+  const updateAddress = useUpdateAddress();
+  const deleteAddress = useDeleteAddress();
+  const [editing, setEditing] = useState(null); // null | 'new' | address id
 
-  const { data: addresses = [] } = useQuery({
-    queryKey: ['me-addresses'],
-    queryFn: async () => (await api.get('/auth/me')).data.user.addresses,
-  });
-
-  async function submit(e) {
-    e.preventDefault();
+  async function save(payload) {
     try {
-      await addAddress.mutateAsync(form);
-      qc.invalidateQueries({ queryKey: ['me-addresses'] });
-      setForm(emptyAddress);
-      setShowForm(false);
+      if (editing === 'new') await addAddress.mutateAsync(payload);
+      else await updateAddress.mutateAsync({ id: editing, payload });
+      setEditing(null);
       toast.success('Address saved');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Could not save the address'));
+    }
+  }
+
+  async function makeDefault(id) {
+    try {
+      await updateAddress.mutateAsync({ id, payload: { isDefault: true } });
     } catch (err) {
       toast.error(apiErrorMessage(err));
     }
   }
 
+  async function remove(id) {
+    if (!window.confirm('Delete this address?')) return;
+    try {
+      await deleteAddress.mutateAsync(id);
+      toast.success('Address deleted');
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
+  }
+
+  if (isPending) return <p className="text-charcoal/60">Loading…</p>;
+
   return (
     <div>
+      <p className="text-sm text-charcoal/60 mb-5">Save your addresses once, then just pick one at checkout.</p>
       <ul className="space-y-3 mb-6">
         {addresses.map((addr) => (
-          <li key={addr._id} className="border border-charcoal/10 rounded-lg p-4 text-sm">
-            <p className="font-medium">{addr.label} {addr.isDefault && <span className="text-xs text-gold-dark">(Default)</span>}</p>
-            <p>{addr.fullName} · {addr.phone}</p>
-            <p className="text-charcoal/70">{addr.line1}, {addr.line2 ? `${addr.line2}, ` : ''}{addr.city}, {addr.state} - {addr.pincode}</p>
+          <li key={addr._id} className="border border-charcoal/10 rounded-lg p-4">
+            {editing === addr._id ? (
+              <AddressForm initial={addr} onSubmit={save} onCancel={() => setEditing(null)} busy={updateAddress.isPending} />
+            ) : (
+              <AddressCard address={addr}>
+                <div className="flex gap-4 mt-3 text-sm">
+                  <button className="underline" onClick={() => setEditing(addr._id)}>Edit</button>
+                  {!addr.isDefault && <button className="underline" onClick={() => makeDefault(addr._id)}>Set as default</button>}
+                  <button className="underline text-red-700" onClick={() => remove(addr._id)}>Delete</button>
+                </div>
+              </AddressCard>
+            )}
           </li>
         ))}
-        {addresses.length === 0 && <p className="text-charcoal/60">No saved addresses yet.</p>}
+        {addresses.length === 0 && editing !== 'new' && <p className="text-charcoal/60">No saved addresses yet.</p>}
       </ul>
 
-      {showForm ? (
-        <form onSubmit={submit} className="grid sm:grid-cols-2 gap-3">
-          <input className="input-field" placeholder="Full Name*" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-          <input className="input-field" placeholder="Phone*" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <input className="input-field sm:col-span-2" placeholder="Address Line 1*" value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} />
-          <input className="input-field sm:col-span-2" placeholder="Address Line 2" value={form.line2} onChange={(e) => setForm({ ...form, line2: e.target.value })} />
-          <input className="input-field" placeholder="City*" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-          <input className="input-field" placeholder="State*" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} />
-          <input className="input-field" placeholder="Pincode*" value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} />
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} />
-            Set as default
-          </label>
-          <div className="sm:col-span-2 flex gap-3">
-            <button type="submit" className="btn-primary">Save Address</button>
-            <button type="button" className="btn-outline" onClick={() => setShowForm(false)}>Cancel</button>
-          </div>
-        </form>
+      {editing === 'new' ? (
+        <div className="border border-charcoal/10 rounded-lg p-4">
+          <AddressForm defaultName={user?.name} onSubmit={save} onCancel={() => setEditing(null)} busy={addAddress.isPending} />
+        </div>
       ) : (
-        <button className="btn-outline" onClick={() => setShowForm(true)}>+ Add New Address</button>
+        <button className="btn-outline" onClick={() => setEditing('new')}>+ Add New Address</button>
       )}
     </div>
   );

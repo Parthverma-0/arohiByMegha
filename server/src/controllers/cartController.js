@@ -1,11 +1,8 @@
-import crypto from 'crypto';
 import { z } from 'zod';
 import Cart from '../models/Cart.js';
 import Product from '../models/Product.js';
 import { catchAsync } from '../utils/catchAsync.js';
 import { ApiError } from '../utils/ApiError.js';
-
-const GUEST_COOKIE = 'guest_cart_id';
 
 export const itemInputSchema = z.object({
   productId: z.string().min(1),
@@ -16,27 +13,10 @@ export const quantityInputSchema = z.object({
   quantity: z.coerce.number().int().min(1).max(20),
 });
 
-function getOwner(req, res) {
-  if (req.userId) return { owner: String(req.userId), ownerType: 'user' };
-
-  let guestId = req.cookies?.[GUEST_COOKIE];
-  if (!guestId) {
-    guestId = crypto.randomUUID();
-    res.cookie(GUEST_COOKIE, guestId, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 90 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
-  }
-  return { owner: guestId, ownerType: 'guest' };
-}
-
-async function getOrCreateCart(req, res) {
-  const { owner, ownerType } = getOwner(req, res);
-  let cart = await Cart.findOne({ owner, ownerType });
-  if (!cart) cart = await Cart.create({ owner, ownerType, items: [] });
+async function getOrCreateCart(req) {
+  const owner = String(req.userId);
+  let cart = await Cart.findOne({ owner, ownerType: 'user' });
+  if (!cart) cart = await Cart.create({ owner, ownerType: 'user', items: [] });
   return cart;
 }
 
@@ -64,8 +44,10 @@ async function hydrate(cart) {
   return { items, subtotal };
 }
 
+// Only shoppers who are logged in have a cart; a visitor just sees an empty bag.
 export const getCart = catchAsync(async (req, res) => {
-  const cart = await getOrCreateCart(req, res);
+  if (!req.userId) return res.json({ success: true, items: [], subtotal: 0 });
+  const cart = await getOrCreateCart(req);
   res.json({ success: true, ...(await hydrate(cart)) });
 });
 
@@ -74,7 +56,7 @@ export const addItem = catchAsync(async (req, res) => {
   const product = await Product.findById(productId);
   if (!product || !product.isActive) throw new ApiError(404, 'Product not found');
 
-  const cart = await getOrCreateCart(req, res);
+  const cart = await getOrCreateCart(req);
   const existing = cart.items.find((i) => String(i.product) === productId);
   const desiredQuantity = Math.min(20, (existing?.quantity || 0) + quantity);
   if (product.stock < desiredQuantity) throw new ApiError(400, `Only ${product.stock} left in stock`);
@@ -86,7 +68,7 @@ export const addItem = catchAsync(async (req, res) => {
 
 export const updateItem = catchAsync(async (req, res) => {
   const { quantity } = req.body;
-  const cart = await getOrCreateCart(req, res);
+  const cart = await getOrCreateCart(req);
   const item = cart.items.find((i) => String(i.product) === req.params.productId);
   if (!item) throw new ApiError(404, 'Item not in cart');
   const product = await Product.findById(req.params.productId);
@@ -98,14 +80,14 @@ export const updateItem = catchAsync(async (req, res) => {
 });
 
 export const removeItem = catchAsync(async (req, res) => {
-  const cart = await getOrCreateCart(req, res);
+  const cart = await getOrCreateCart(req);
   cart.items = cart.items.filter((i) => String(i.product) !== req.params.productId);
   await cart.save();
   res.json({ success: true, ...(await hydrate(cart)) });
 });
 
 export const clearCart = catchAsync(async (req, res) => {
-  const cart = await getOrCreateCart(req, res);
+  const cart = await getOrCreateCart(req);
   cart.items = [];
   await cart.save();
   res.json({ success: true, items: [], subtotal: 0 });

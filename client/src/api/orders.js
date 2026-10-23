@@ -1,15 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client.js';
 
-// Delivery charge for the address being typed in. Only runs once there's
-// enough of an address to price (a full pincode, or a non-India country).
-export function useDeliveryQuote({ address, couponCode, cartSubtotal }) {
-  const { pincode, city, stateCode, countryCode } = address;
-  const ready = countryCode !== 'IN' ? Boolean(countryCode) : /^\d{6}$/.test(pincode.trim());
+// Order total (with delivery) for the saved address selected at checkout.
+export function useDeliveryQuote({ addressId, couponCode, cartSubtotal }) {
   return useQuery({
-    queryKey: ['delivery-quote', countryCode, stateCode, city, pincode.trim(), couponCode, cartSubtotal],
-    queryFn: async () => (await api.post('/orders/delivery-quote', { shippingAddress: { pincode, city, stateCode, countryCode }, couponCode })).data,
-    enabled: ready,
+    queryKey: ['delivery-quote', addressId, couponCode, cartSubtotal],
+    queryFn: async () => (await api.post('/orders/delivery-quote', { addressId, couponCode })).data,
+    enabled: Boolean(addressId),
     staleTime: 5 * 60 * 1000,
     retry: false,
   });

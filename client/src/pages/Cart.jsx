@@ -6,8 +6,11 @@ import { useCart, useUpdateCartItem, useRemoveCartItem } from '../api/cart.js';
 import LazyImage from '../components/ui/LazyImage.jsx';
 import { formatINR } from '../components/ui/PriceTag.jsx';
 import QuantitySelector from '../components/ui/QuantitySelector.jsx';
+import { useAuthStore } from '../store/authStore.js';
 
 export default function Cart() {
+  const user = useAuthStore((s) => s.user);
+  const isHydrating = useAuthStore((s) => s.isHydrating);
   const { data, isPending: isLoading } = useCart();
   const updateItem = useUpdateCartItem();
   const removeItem = useRemoveCartItem();
@@ -21,6 +24,17 @@ export default function Cart() {
     updateItem.mutate({ productId, quantity }, { onError: (err) => toast.error(apiErrorMessage(err, 'Could not update quantity')) });
   }
 
+  if (isHydrating) return <div className="max-w-4xl mx-auto px-4 py-20">Loading...</div>;
+  if (!user) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-20 text-center">
+        <Helmet><title>Your Bag | Arohi by Megha</title></Helmet>
+        <h1 className="section-heading mb-4">Your Bag</h1>
+        <p className="text-charcoal/60 mb-8">Log in to add pieces to your bag and check out.</p>
+        <Link to="/login" state={{ from: '/cart' }} className="btn-primary">Log in with Google</Link>
+      </div>
+    );
+  }
   if (isLoading) return <div className="max-w-4xl mx-auto px-4 py-20">Loading...</div>;
 
   const items = data?.items || [];

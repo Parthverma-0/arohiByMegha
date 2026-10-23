@@ -13,24 +13,29 @@ import { buildOrdersWorkbook } from '../utils/orderExcelLog.js';
 import { ensureInvoiceNumber, buildInvoicePdf, invoiceFilename, emailInvoice } from '../utils/invoice.js';
 import { quoteDelivery } from '../utils/delivery.js';
 
-const addressSchema = z.object({
-  fullName: z.string().min(2),
-  phone: z.string().min(10).max(15),
-  email: z.string().trim().email(), // required: the invoice is emailed here
-  line1: z.string().min(3),
-  line2: z.string().optional(),
-  city: z.string().min(2),
-  state: z.string().min(2),
-  stateCode: z.string().optional(),
-  country: z.string().min(2).default('India'),
-  countryCode: z.string().length(2).default('IN'),
-  pincode: z.string().trim().min(4).max(10),
-}).refine((a) => a.countryCode !== 'IN' || /^\d{6}$/.test(a.pincode), { message: 'Please enter a valid 6-digit pincode', path: ['pincode'] });
-
 export const checkoutSchema = z.object({
-  shippingAddress: addressSchema,
+  addressId: z.string().min(1),
   couponCode: z.string().optional(),
 });
+
+// Orders ship to one of the customer's saved addresses; the invoice goes to their account email.
+function shippingAddressFor(user, addressId) {
+  const saved = user.addresses.id(addressId);
+  if (!saved) throw new ApiError(400, 'Please choose a delivery address');
+  return {
+    fullName: saved.fullName,
+    phone: saved.phone,
+    email: user.email,
+    line1: saved.line1,
+    line2: saved.line2,
+    city: saved.city,
+    state: saved.state,
+    stateCode: saved.stateCode,
+    country: saved.country || 'India',
+    countryCode: saved.countryCode || 'IN',
+    pincode: saved.pincode,
+  };
+}
 
 function generateOrderNumber() {
   return `AM${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
@@ -38,18 +43,12 @@ function generateOrderNumber() {
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
-function getGuestOrUserOwner(req) {
-  if (req.userId) return { owner: String(req.userId), ownerType: 'user' };
-  const guestId = req.cookies?.guest_cart_id;
-  if (!guestId) throw new ApiError(400, 'Your cart is empty');
-  return { owner: guestId, ownerType: 'guest' };
-}
-
 // Prices the shopper's current cart, applies the coupon and works out the
 // delivery charge for the address. Returns a plain snapshot (no live
 // documents) so it can be stored and turned into an order later.
 async function priceCheckout(req, couponCode, shippingAddress) {
-  const { owner, ownerType } = getGuestOrUserOwner(req);
+  const owner = String(req.userId);
+  const ownerType = 'user';
   const cart = await Cart.findOne({ owner, ownerType });
   if (!cart || cart.items.length === 0) throw new ApiError(400, 'Your cart is empty');
 
@@ -107,18 +106,14 @@ async function finalizeOrder({ orderNumber, userId, checkout, shippingAddress, p
 }
 
 export const deliveryQuoteSchema = z.object({
-  shippingAddress: z.object({
-    pincode: z.string().trim().optional(),
-    city: z.string().optional(),
-    stateCode: z.string().optional(),
-    countryCode: z.string().optional(),
-  }),
+  addressId: z.string().optional(),
   couponCode: z.string().optional(),
 });
 
-// Live delivery charge for the checkout summary, as the address is filled in.
+// Live order total for the checkout summary, for the address currently selected.
 export const getDeliveryQuote = catchAsync(async (req, res) => {
-  const { shippingAddress, couponCode } = req.body;
+  const { addressId, couponCode } = req.body;
+  const shippingAddress = addressId ? shippingAddressFor(req.currentUser, addressId) : {};
   const { subtotal, coupon, shippingFee, delivery, total } = await priceCheckout(req, couponCode, shippingAddress);
   res.json({ success: true, subtotal, discount: coupon?.discount || 0, shippingFee, delivery, total });
 });
@@ -136,7 +131,8 @@ export const getDeliveryQuote = catchAsync(async (req, res) => {
 
 export const initiateRazorpayPayment = catchAsync(async (req, res) => {
   if (!isRazorpayConfigured) throw new ApiError(503, 'Online payment is not available right now — please try again later');
-  const { shippingAddress, couponCode } = req.body;
+  const { addressId, couponCode } = req.body;
+  const shippingAddress = shippingAddressFor(req.currentUser, addressId);
   const checkout = await priceCheckout(req, couponCode, shippingAddress);
   // The delivery charge has to be known up front to take the full amount online.
   if (checkout.delivery.feePending) throw new ApiError(400, 'We can only take orders for delivery within India online right now — please contact us for international orders');
