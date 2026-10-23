@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, NavLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCart } from '../../api/cart.js';
@@ -62,6 +63,8 @@ export default function Header() {
         {searchOpen && <SearchBar onClose={() => setSearchOpen(false)} />}
       </AnimatePresence>
 
+      {/* Portalled to <body>: the header's backdrop-blur would otherwise shrink these fixed panels to the header's height. */}
+      {createPortal(
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -77,7 +80,7 @@ export default function Header() {
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'tween', duration: 0.25 }}
-              className="fixed inset-y-0 left-0 w-72 bg-ivory z-50 p-6 flex flex-col gap-6"
+              className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-ivory shadow-xl z-50 p-6 flex flex-col gap-6 overflow-y-auto"
             >
               <button className="self-end p-2" aria-label="Close menu" onClick={() => setMenuOpen(false)}>
                 <CloseIcon />
@@ -101,7 +104,9 @@ export default function Header() {
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
     </header>
   );
 }
