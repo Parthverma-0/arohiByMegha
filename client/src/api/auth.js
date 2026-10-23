@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client.js';
 import { useAuthStore } from '../store/authStore.js';
 
@@ -21,9 +21,16 @@ export function useGoogleLogin() {
 
 export function useLogout() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => (await api.post('/auth/logout')).data,
-    onSuccess: () => clearAuth(),
+    onSuccess: () => {
+      clearAuth();
+      // Drop the previous customer's data so the next login on this device starts clean.
+      for (const key of ['cart', 'addresses', 'wishlist', 'my-orders', 'my-order', 'delivery-quote']) {
+        qc.removeQueries({ queryKey: [key] });
+      }
+    },
   });
 }
 

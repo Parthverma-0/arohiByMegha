@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { useCart } from '../../api/cart.js';
+import { useLogout } from '../../api/auth.js';
+import { apiErrorMessage } from '../../api/client.js';
 import { useAuthStore } from '../../store/authStore.js';
 import SearchBar from '../ui/SearchBar.jsx';
 
@@ -17,6 +20,8 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const { data: cart } = useCart();
   const user = useAuthStore((s) => s.user);
+  const logout = useLogout();
+  const navigate = useNavigate();
   const itemCount = cart?.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
 
   return (
@@ -101,6 +106,27 @@ export default function Header() {
                   {user ? 'My Account' : 'Login / Signup'}
                 </NavLink>
               </nav>
+              {user && (
+                <div className="mt-auto pt-6 border-t border-charcoal/10">
+                  <p className="text-xs text-charcoal/60 mb-3 truncate">Signed in as {user.email}</p>
+                  <button
+                    className="btn-outline w-full"
+                    disabled={logout.isPending}
+                    onClick={() =>
+                      logout.mutate(undefined, {
+                        onSuccess: () => {
+                          setMenuOpen(false);
+                          navigate('/');
+                          toast.success('Logged out');
+                        },
+                        onError: (err) => toast.error(apiErrorMessage(err, 'Could not log out')),
+                      })
+                    }
+                  >
+                    {logout.isPending ? 'Logging out…' : 'Log out'}
+                  </button>
+                </div>
+              )}
             </motion.div>
           </>
         )}
