@@ -7,6 +7,7 @@ import { useInitiateRazorpayPayment, useVerifyRazorpayPayment, usePreviewCoupon,
 import { useCountries, useStates, useCities } from '../api/locations.js';
 import { apiErrorMessage } from '../api/client.js';
 import { formatINR } from '../components/ui/PriceTag.jsx';
+import SearchableSelect from '../components/ui/SearchableSelect.jsx';
 import { useAuthStore } from '../store/authStore.js';
 
 const OTHER_CITY = '__other__';
@@ -192,25 +193,36 @@ export default function Checkout() {
             <input className="input-field sm:col-span-2" placeholder="House / Flat, Street*" value={address.line1} onChange={(e) => updateField('line1', e.target.value)} />
             <input className="input-field sm:col-span-2" placeholder="Area, Landmark" value={address.line2} onChange={(e) => updateField('line2', e.target.value)} />
 
-            <select className="input-field" value={address.countryCode} onChange={(e) => selectCountry(e.target.value)} aria-label="Country">
-              {!countries.length && <option value="IN">India</option>}
-              {countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-            </select>
+            <SearchableSelect
+              ariaLabel="Country"
+              placeholder="Country*"
+              value={address.countryCode}
+              onChange={selectCountry}
+              options={countries.length ? countries.map((c) => ({ value: c.code, label: c.name })) : [{ value: 'IN', label: 'India' }]}
+            />
             {states.length ? (
-              <select className="input-field" value={address.stateCode} onChange={(e) => selectState(e.target.value)} aria-label="State">
-                <option value="">State*</option>
-                {states.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
-              </select>
+              <SearchableSelect
+                ariaLabel="State"
+                placeholder="State* (type to search)"
+                value={address.stateCode}
+                onChange={selectState}
+                options={states.map((s) => ({ value: s.code, label: s.name }))}
+              />
             ) : (
               <input className="input-field" placeholder="State / Region*" value={address.state} onChange={(e) => updateField('state', e.target.value)} />
             )}
 
             {cities.length && !cityIsOther ? (
-              <select className="input-field" value={address.city} onChange={(e) => selectCity(e.target.value)} aria-label="City">
-                <option value="">City*</option>
-                {cities.map((c) => <option key={c} value={c}>{c}</option>)}
-                <option value={OTHER_CITY}>My city isn't listed</option>
-              </select>
+              <SearchableSelect
+                ariaLabel="City"
+                placeholder="City* (type to search)"
+                value={address.city}
+                onChange={selectCity}
+                options={[
+                  ...cities.map((c) => ({ value: c, label: c })),
+                  { value: OTHER_CITY, label: "My city isn't listed", pinned: true },
+                ]}
+              />
             ) : (
               <input
                 className="input-field"
