@@ -33,7 +33,11 @@ export const couponInputSchema = z.object({
   value: z.coerce.number().min(0),
   minOrderValue: z.coerce.number().min(0).optional().default(0),
   maxDiscount: z.coerce.number().min(0).nullable().optional(),
-  expiresAt: z.coerce.date().nullable().optional(),
+  // A bare date from the admin date picker means "valid through the end of that day" in India.
+  expiresAt: z.preprocess(
+    (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T23:59:59.999+05:30` : v),
+    z.coerce.date().nullable().optional()
+  ),
   usageLimit: z.coerce.number().int().min(1).nullable().optional(),
   isActive: z.coerce.boolean().optional().default(true),
 });
