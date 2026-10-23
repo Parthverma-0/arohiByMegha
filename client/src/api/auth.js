@@ -1,19 +1,20 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from './client.js';
 import { useAuthStore } from '../store/authStore.js';
 
-export function useSignup() {
-  const setAuth = useAuthStore((s) => s.setAuth);
-  return useMutation({
-    mutationFn: async (payload) => (await api.post('/auth/signup', payload)).data,
-    onSuccess: (data) => setAuth(data.user, data.accessToken),
+export function useGoogleConfig() {
+  return useQuery({
+    queryKey: ['google-config'],
+    queryFn: async () => (await api.get('/auth/google/config')).data,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 }
 
-export function useLogin() {
+export function useGoogleLogin() {
   const setAuth = useAuthStore((s) => s.setAuth);
   return useMutation({
-    mutationFn: async (payload) => (await api.post('/auth/login', payload)).data,
+    mutationFn: async (credential) => (await api.post('/auth/google', { credential })).data,
     onSuccess: (data) => setAuth(data.user, data.accessToken),
   });
 }

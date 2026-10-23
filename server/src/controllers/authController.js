@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import Cart from '../models/Cart.js';
 import { catchAsync } from '../utils/catchAsync.js';
@@ -12,18 +13,14 @@ import {
 
 const REFRESH_COOKIE = 'customer_refresh';
 
-export const signupSchema = z.object({
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
-  phone: z.string().min(10).max(15),
-  password: z.string().min(8).max(100),
-  marketingConsent: z.boolean().optional().default(false),
-});
+// An OAuth client ID is public (Google's button ships it to every browser), so defaulting it here
+// means the site works without extra deploy config; set GOOGLE_CLIENT_ID to override.
+const GOOGLE_CLIENT_ID =
+  process.env.GOOGLE_CLIENT_ID || '507960590061-it20q31vq1nmutiorsngupqcpttp75vi.apps.googleusercontent.com';
 
-export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
+const googleClient = new OAuth2Client();
+
+export const googleSchema = z.object({ credential: z.string().min(1) });
 
 async function mergeGuestCartIntoUser(req, userId) {
   const guestId = req.cookies?.guest_cart_id;
@@ -50,23 +47,33 @@ function sendAuthResponse(res, user) {
   res.json({ success: true, accessToken, user: user.toSafeJSON() });
 }
 
-export const signup = catchAsync(async (req, res) => {
-  const { name, email, phone, password, marketingConsent } = req.body;
-  const existing = await User.findOne({ email });
-  if (existing) throw new ApiError(409, 'An account with this email already exists');
+export const googleConfig = (req, res) => {
+  res.json({ success: true, clientId: GOOGLE_CLIENT_ID });
+};
 
-  const user = new User({ name, email, phone, marketingConsent });
-  await user.setPassword(password);
-  await user.save();
-  await mergeGuestCartIntoUser(req, user._id);
-  sendAuthResponse(res, user);
-});
+export const googleLogin = catchAsync(async (req, res) => {
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({ idToken: req.body.credential, audience: GOOGLE_CLIENT_ID });
+    payload = ticket.getPayload();
+  } catch {
+    throw new ApiError(401, 'Google sign-in failed, please try again');
+  }
+  // Only a Google-verified email is trusted enough to link to an existing account.
+  if (!payload?.email || !payload.email_verified) {
+    throw new ApiError(401, 'Your Google account email is not verified');
+  }
 
-export const login = catchAsync(async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (!user || !(await user.comparePassword(password))) {
-    throw new ApiError(401, 'Invalid email or password');
+  const email = payload.email.toLowerCase();
+  let user = await User.findOne({ googleId: payload.sub });
+  if (!user) {
+    user = await User.findOne({ email });
+    if (user) {
+      user.googleId = payload.sub;
+      await user.save();
+    } else {
+      user = await User.create({ name: payload.name || email.split('@')[0], email, googleId: payload.sub });
+    }
   }
   await mergeGuestCartIntoUser(req, user._id);
   sendAuthResponse(res, user);

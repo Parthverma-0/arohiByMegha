@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 
 const addressSchema = new mongoose.Schema(
   {
@@ -20,8 +19,11 @@ const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    phone: { type: String, required: true, trim: true },
-    passwordHash: { type: String, required: true },
+    // Customers sign in with Google only; phone is collected at checkout. passwordHash is
+    // kept so older email/password accounts still load (they sign in via Google by email now).
+    phone: { type: String, default: '', trim: true },
+    passwordHash: { type: String },
+    googleId: { type: String, unique: true, sparse: true },
     marketingConsent: { type: Boolean, default: false },
     addresses: [addressSchema],
     wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
@@ -29,14 +31,6 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-userSchema.methods.setPassword = async function setPassword(plain) {
-  this.passwordHash = await bcrypt.hash(plain, 12);
-};
-
-userSchema.methods.comparePassword = function comparePassword(plain) {
-  return bcrypt.compare(plain, this.passwordHash);
-};
 
 userSchema.methods.toSafeJSON = function toSafeJSON() {
   const { _id, name, email, phone, marketingConsent, addresses, wishlist, createdAt } = this;

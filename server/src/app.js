@@ -38,13 +38,15 @@ export function createApp() {
           defaultSrc: ["'self'"],
           imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com'],
           mediaSrc: ["'self'", 'https://res.cloudinary.com'],
-          scriptSrc: ["'self'", 'https://checkout.razorpay.com'],
-          frameSrc: ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
-          connectSrc: ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com', 'https://api.cloudinary.com'],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          scriptSrc: ["'self'", 'https://checkout.razorpay.com', 'https://accounts.google.com/gsi/client'],
+          frameSrc: ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com', 'https://accounts.google.com/gsi/'],
+          connectSrc: ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com', 'https://api.cloudinary.com', 'https://accounts.google.com/gsi/'],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://accounts.google.com/gsi/style'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         },
       },
+      // Google's sign-in popup needs to message back to this window.
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     })
   );
