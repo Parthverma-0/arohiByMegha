@@ -36,11 +36,11 @@ export function createApp() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com'],
+          imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com', 'https://www.facebook.com'],
           mediaSrc: ["'self'", 'https://res.cloudinary.com'],
-          scriptSrc: ["'self'", 'https://checkout.razorpay.com', 'https://accounts.google.com/gsi/client'],
+          scriptSrc: ["'self'", 'https://checkout.razorpay.com', 'https://accounts.google.com/gsi/client', 'https://connect.facebook.net'],
           frameSrc: ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com', 'https://accounts.google.com/gsi/'],
-          connectSrc: ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com', 'https://api.cloudinary.com', 'https://accounts.google.com/gsi/'],
+          connectSrc: ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com', 'https://api.cloudinary.com', 'https://accounts.google.com/gsi/', 'https://www.facebook.com', 'https://connect.facebook.net'],
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://accounts.google.com/gsi/style'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         },
