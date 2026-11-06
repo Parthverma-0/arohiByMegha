@@ -11,6 +11,15 @@ const sortOptions = [
   { value: 'popularity', label: 'Popularity' },
 ];
 
+// Fixed price bands. max is inclusive on the server, so each band stops just below the next one's start.
+const priceRanges = [
+  { value: 'under-100', label: 'Under ₹100', min: undefined, max: 99.99 },
+  { value: '100-200', label: '₹100 – ₹200', min: 100, max: 199.99 },
+  { value: '200-500', label: '₹200 – ₹500', min: 200, max: 499.99 },
+  { value: '500-1000', label: '₹500 – ₹1,000', min: 500, max: 999.99 },
+  { value: 'over-1000', label: '₹1,000 & above', min: 1000, max: undefined },
+];
+
 export default function Shop() {
   const [params, setParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -20,8 +29,8 @@ export default function Shop() {
     () => ({
       category: params.get('category') || undefined,
       search: params.get('search') || undefined,
-      minPrice: params.get('minPrice') || undefined,
-      maxPrice: params.get('maxPrice') || undefined,
+      minPrice: priceRanges.find((r) => r.value === params.get('price'))?.min,
+      maxPrice: priceRanges.find((r) => r.value === params.get('price'))?.max,
       sort: params.get('sort') || 'newest',
       bestsellers: params.get('bestsellers') || undefined,
       newArrivals: params.get('newArrivals') || undefined,
@@ -41,7 +50,19 @@ export default function Shop() {
     setParams(next);
   }
 
-  const activeCategory = categories.find((c) => c.slug === queryParams.category);
+  const activePriceRange = priceRanges.find((r) => r.value === params.get('price'));
+
+  function updatePriceRange(value) {
+    const next = new URLSearchParams(params);
+    next.delete('minPrice');
+    next.delete('maxPrice');
+    if (value) next.set('price', value);
+    else next.delete('price');
+    next.delete('page');
+    setParams(next);
+  }
+
+  const activeCategory =categories.find((c) => c.slug === queryParams.category);
   const title = queryParams.search
     ? `Results for "${queryParams.search}"`
     : activeCategory?.name || (queryParams.newArrivals ? 'New Arrivals' : queryParams.bestsellers ? 'Bestsellers' : 'Shop All Jewellery');
@@ -85,23 +106,16 @@ export default function Shop() {
 
           <div>
             <h3 className="font-medium mb-3 text-sm uppercase tracking-wide">Price</h3>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                placeholder="Min"
-                defaultValue={queryParams.minPrice}
-                onBlur={(e) => updateParam('minPrice', e.target.value)}
-                className="input-field !py-2 text-sm"
-              />
-              <span>–</span>
-              <input
-                type="number"
-                placeholder="Max"
-                defaultValue={queryParams.maxPrice}
-                onBlur={(e) => updateParam('maxPrice', e.target.value)}
-                className="input-field !py-2 text-sm"
-              />
-            </div>
+            <select
+              value={activePriceRange?.value || ''}
+              onChange={(e) => updatePriceRange(e.target.value)}
+              className="input-field !py-2 text-sm"
+            >
+              <option value="">All prices</option>
+              {priceRanges.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
           </div>
         </aside>
 

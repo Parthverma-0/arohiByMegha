@@ -8,8 +8,9 @@ import { ApiError } from '../utils/ApiError.js';
 export const listQuerySchema = z.object({
   category: z.string().optional(),
   search: z.string().optional(),
-  minPrice: z.coerce.number().optional(),
-  maxPrice: z.coerce.number().optional(),
+  // Negative or non-numeric prices from a hand-edited URL are ignored rather than erroring.
+  minPrice: z.coerce.number().nonnegative().optional().catch(undefined),
+  maxPrice: z.coerce.number().nonnegative().optional().catch(undefined),
   material: z.string().optional(),
   sort: z.enum(['newest', 'price_asc', 'price_desc', 'popularity']).optional().default('newest'),
   page: z.coerce.number().int().min(1).optional().default(1),
@@ -27,7 +28,9 @@ const sortMap = {
 
 // GET /api/products — public storefront listing with filter/sort/search/pagination.
 export const listProducts = catchAsync(async (req, res) => {
-  const { category, search, minPrice, maxPrice, material, sort, page, limit, bestsellers, newArrivals } = req.query;
+  let { minPrice, maxPrice } = req.query;
+  if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) [minPrice, maxPrice] = [maxPrice, minPrice];
+  const { category, search, material, sort, page, limit, bestsellers, newArrivals } = req.query;
   const filter = { isActive: true };
 
   if (category) {
